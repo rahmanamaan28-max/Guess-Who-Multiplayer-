@@ -130,15 +130,15 @@ io.on('connection', (socket) => {
 
   // Voice chat handlers
   socket.on('getVoicePeers', (room) => {
-    const roomSockets = io.sockets.adapter.rooms.get(room);
-    if (roomSockets) {
-      const peers = Array.from(roomSockets);
-      socket.emit('voicePeers', peers);
-      
-      // Notify others about new peer
-      socket.to(room).emit('newVoicePeer', socket.id);
-    }
-  });
+  const roomSockets = io.sockets.adapter.rooms.get(room);
+  if (roomSockets) {
+    const peers = Array.from(roomSockets);
+    socket.emit('voicePeers', peers);
+    
+    // Notify others about new peer
+    socket.to(room).emit('newVoicePeer', socket.id);
+  }
+});
 
   socket.on('voiceSignal', ({ signal, targetId, room }) => {
     if (targetId) {
