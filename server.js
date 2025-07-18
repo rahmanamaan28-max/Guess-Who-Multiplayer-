@@ -128,7 +128,7 @@ io.on('connection', (socket) => {
   socket.on('getVoicePeers', (room) => {
     const roomSockets = io.sockets.adapter.rooms.get(room);
     if (roomSockets) {
-      const peers = Array.from(roomSockets);
+      const peers = Array.from(roomSockets).filter(id => id !== socket.id);
       socket.emit('voicePeers', peers);
       
       // Notify others about new peer
@@ -137,7 +137,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('voiceSignal', ({ signal, targetId, room }) => {
-    if (targetId) {
+    if (targetId && signal && (signal.type === 'offer' || signal.type === 'answer')) {
       // Send to specific target
       io.to(targetId).emit('voiceSignal', { signal, senderId: socket.id });
     }
