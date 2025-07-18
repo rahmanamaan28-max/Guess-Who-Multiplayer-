@@ -42,6 +42,13 @@ document.getElementById('submitAnswer').onclick = () => {
   }
 };
 
+document.getElementById('discussionInput').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    document.getElementById('submitDiscussion').click();
+  }
+});
+
 document.getElementById('submitDiscussion').onclick = () => {
   const msg = document.getElementById('discussionInput').value.trim();
   if (msg) {
