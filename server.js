@@ -6,7 +6,12 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -124,23 +129,25 @@ io.on('connection', (socket) => {
   });
 
   // Voice chat handlers
-  socket.on('startVoiceChat', () => {
-    const room = getRoom(socket);
-    socket.to(room).emit('voiceChatStarted');
+  socket.on('getVoicePeers', (room) => {
+    const roomSockets = io.sockets.adapter.rooms.get(room);
+    if (roomSockets) {
+      const peers = Array.from(roomSockets);
+      socket.emit('voicePeers', peers);
+      
+      // Notify others about new peer
+      socket.to(room).emit('newVoicePeer', socket.id);
+    }
   });
 
   socket.on('voiceSignal', ({ signal, targetId, room }) => {
     if (targetId) {
       // Send to specific target
       io.to(targetId).emit('voiceSignal', { signal, senderId: socket.id });
-    } else {
-      // Broadcast to room
-      socket.to(room).emit('voiceSignal', { signal, senderId: socket.id });
     }
   });
 
-  socket.on('leaveVoiceChat', () => {
-    const room = getRoom(socket);
+  socket.on('leaveVoiceChat', (room) => {
     socket.to(room).emit('playerLeftVoiceChat', socket.id);
   });
 
