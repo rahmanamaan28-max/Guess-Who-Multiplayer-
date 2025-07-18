@@ -86,7 +86,6 @@ socket.on('gameStarted', () => {
   document.getElementById('lobby-screen').classList.add('hidden');
   document.getElementById('game-screen').classList.remove('hidden');
   document.getElementById('game-over-screen').classList.add('hidden');
-  document.getElementById('scoreboard').classList.add('hidden');
 });
 
 socket.on('roundStart', ({ round, question, time }) => {
@@ -99,9 +98,11 @@ socket.on('roundStart', ({ round, question, time }) => {
   document.getElementById('answerInput').disabled = false;
   document.getElementById('submitAnswer').disabled = false;
   document.getElementById('answers-table').classList.add('hidden');
-  document.getElementById('discussion-box').classList.add('hidden');
   document.getElementById('vote-box').classList.add('hidden');
-  document.getElementById('scoreboard').classList.add('hidden');
+  document.getElementById('discussion-box').classList.remove('hidden');
+  
+  // Clear discussion messages
+  document.getElementById('discussionMessages').innerHTML = '';
   
   startTimer(time);
 });
@@ -121,7 +122,7 @@ socket.on('revealAnswers', ({ question, answers }) => {
 
 socket.on('startDiscussion', ({ time }) => {
   document.getElementById('discussion-box').classList.remove('hidden');
-  document.getElementById('discussionMessages').innerHTML = '';
+  document.getElementById('vote-box').classList.add('hidden');
   startTimer(time);
 });
 
@@ -136,6 +137,9 @@ socket.on('newDiscussionMessage', ({ name, message }) => {
 });
 
 socket.on('startVote', ({ players, time }) => {
+  document.getElementById('discussion-box').classList.add('hidden');
+  document.getElementById('vote-box').classList.remove('hidden');
+  
   const container = document.getElementById('voteOptions');
   container.innerHTML = '';
   players.forEach(p => {
@@ -150,21 +154,12 @@ socket.on('startVote', ({ players, time }) => {
     container.appendChild(label);
     container.appendChild(document.createElement('br'));
   });
-  document.getElementById('vote-box').classList.remove('hidden');
   document.getElementById('submitVote').disabled = false;
   startTimer(time);
 });
 
 socket.on('showScores', ({ scores, isFinalRound, winner }) => {
-  const tbody = document.getElementById('scoreboardBody');
-  tbody.innerHTML = '';
-  scores.forEach(p => {
-    const row = document.createElement('tr');
-    row.innerHTML = `<td>${p.name}</td><td>${p.score}</td>`;
-    tbody.appendChild(row);
-  });
-  document.getElementById('scoreboard').classList.remove('hidden');
-  document.getElementById('vote-box').classList.add('hidden');
+  updateScoreboard(scores);
   
   // Check if it's the final round
   if (isFinalRound) {
@@ -174,6 +169,17 @@ socket.on('showScores', ({ scores, isFinalRound, winner }) => {
     }, 5000);
   }
 });
+
+// Function to update scoreboard
+function updateScoreboard(scores) {
+  const tbody = document.getElementById('scoreboardBody');
+  tbody.innerHTML = '';
+  scores.forEach(p => {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td>${p.name}</td><td>${p.score}</td>`;
+    tbody.appendChild(row);
+  });
+}
 
 // New event for new game started
 socket.on('newGameStarted', () => {
