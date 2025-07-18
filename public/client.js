@@ -4,6 +4,153 @@ let myRoom = '';
 let isHost = false;
 let timerInterval;
 
+// Sound effects
+const soundEffects = {
+  timer: document.getElementById('timerSound'),
+  correct: document.getElementById('correctSound'),
+  wrong: document.getElementById('wrongSound'),
+  start: document.getElementById('startSound'),
+  vote: document.getElementById('voteSound')
+};
+
+let isSoundEnabled = true;
+let voiceStream = null;
+let voiceConnections = {};
+let voicePeer = null;
+let isMuted = false;
+
+// Sound control button
+const soundControl = document.createElement('div');
+soundControl.id = 'sound-control';
+soundControl.innerHTML = '<i class="fas fa-volume-up"></i>';
+soundControl.onclick = () => {
+  isSoundEnabled = !isSoundEnabled;
+  soundControl.innerHTML = isSoundEnabled 
+    ? '<i class="fas fa-volume-up"></i>' 
+    : '<i class="fas fa-volume-mute"></i>';
+  localStorage.setItem('soundEnabled', isSoundEnabled);
+};
+document.body.appendChild(soundControl);
+
+// Check sound preference from localStorage
+if (localStorage.getItem('soundEnabled') === 'false') {
+  isSoundEnabled = false;
+  soundControl.innerHTML = '<i class="fas fa-volume-mute"></i>';
+}
+
+// Play sound helper function
+function playSound(sound) {
+  if (!isSoundEnabled) return;
+  sound.currentTime = 0;
+  sound.play().catch(e => console.log("Sound play failed:", e));
+}
+
+// Voice chat functions
+async function startVoiceChat() {
+  try {
+    document.getElementById('voice-chat-overlay').classList.remove('hidden');
+    
+    // Initialize SimplePeer for WebRTC
+    voicePeer = new SimplePeer({ initiator: true, trickle: false });
+    
+    // Get user media
+    voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    
+    // Add our stream to peer connection
+    voicePeer.addStream(voiceStream);
+    
+    // Handle signal data
+    voicePeer.on('signal', data => {
+      socket.emit('voiceSignal', { signal: data, room: myRoom });
+    });
+    
+    // When we receive a stream
+    voicePeer.on('stream', stream => {
+      // Create audio element for the remote stream
+      const audio = new Audio();
+      audio.srcObject = stream;
+      audio.play();
+      
+      // Add to voice connections
+      const id = stream.id;
+      voiceConnections[id] = { audio, stream };
+      updateVoiceParticipants();
+    });
+    
+    // Handle errors
+    voicePeer.on('error', err => {
+      console.error('Voice chat error:', err);
+      document.getElementById('voice-chat-status').textContent = 'Error: ' + err.message;
+    });
+    
+    document.getElementById('voice-chat-status').textContent = 'Connected';
+    updateVoiceParticipants();
+    
+  } catch (err) {
+    console.error('Error starting voice chat:', err);
+    document.getElementById('voice-chat-status').textContent = 'Error: ' + err.message;
+  }
+}
+
+function stopVoiceChat() {
+  if (voiceStream) {
+    voiceStream.getTracks().forEach(track => track.stop());
+    voiceStream = null;
+  }
+  
+  if (voicePeer) {
+    voicePeer.destroy();
+    voicePeer = null;
+  }
+  
+  Object.values(voiceConnections).forEach(conn => {
+    if (conn.audio) {
+      conn.audio.pause();
+      conn.audio.srcObject = null;
+    }
+  });
+  
+  voiceConnections = {};
+  document.getElementById('voice-chat-overlay').classList.add('hidden');
+}
+
+function updateVoiceParticipants() {
+  const container = document.getElementById('voice-participants');
+  container.innerHTML = '';
+  
+  // Add yourself
+  const you = document.createElement('div');
+  you.className = `participant participant-you ${isMuted ? 'participant-muted' : ''}`;
+  you.innerHTML = `<i class="fas fa-user"></i> ${myName} (You) ${isMuted ? '<i class="fas fa-microphone-slash"></i>' : ''}`;
+  container.appendChild(you);
+  
+  // Add other participants
+  Object.entries(voiceConnections).forEach(([id, conn]) => {
+    const participant = document.createElement('div');
+    participant.className = 'participant';
+    participant.innerHTML = `<i class="fas fa-user"></i> ${id}`;
+    container.appendChild(participant);
+  });
+}
+
+// Voice chat controls
+document.getElementById('mute-mic-btn').onclick = () => {
+  isMuted = !isMuted;
+  if (voiceStream) {
+    voiceStream.getAudioTracks()[0].enabled = !isMuted;
+  }
+  document.getElementById('mute-mic-btn').innerHTML = isMuted 
+    ? '<i class="fas fa-microphone-slash"></i> Unmute' 
+    : '<i class="fas fa-microphone"></i> Mute';
+  updateVoiceParticipants();
+};
+
+document.getElementById('leave-voice-btn').onclick = () => {
+  stopVoiceChat();
+  socket.emit('leaveVoiceChat');
+};
+
+// Game event handlers
 document.getElementById('joinBtn').onclick = () => {
   myName = document.getElementById('playerName').value.trim();
   myRoom = document.getElementById('roomCode').value.trim().toUpperCase();
@@ -56,11 +203,11 @@ document.getElementById('submitVote').onclick = () => {
   }
 };
 
-// New restart button handler
 document.getElementById('restartGame').onclick = () => {
   socket.emit('restartGame');
 };
 
+// Socket event handlers
 socket.on('roomJoined', ({ room, players, host }) => {
   document.getElementById('join-screen').classList.add('hidden');
   document.getElementById('lobby-screen').classList.remove('hidden');
@@ -83,12 +230,14 @@ function updatePlayerList(players) {
 }
 
 socket.on('gameStarted', () => {
+  playSound(soundEffects.start);
   document.getElementById('lobby-screen').classList.add('hidden');
   document.getElementById('game-screen').classList.remove('hidden');
   document.getElementById('game-over-screen').classList.add('hidden');
 });
 
 socket.on('roundStart', ({ round, question, time }) => {
+  playSound(soundEffects.start);
   document.getElementById('roundNum').textContent = round;
   document.getElementById('displayQuestion').textContent = question;
   
@@ -121,6 +270,11 @@ socket.on('revealAnswers', ({ question, answers }) => {
 });
 
 socket.on('startDiscussion', ({ time }) => {
+  playSound(soundEffects.timer);
+  // Start voice chat when discussion begins
+  if (navigator.mediaDevices) {
+    socket.emit('startVoiceChat');
+  }
   document.getElementById('discussion-box').classList.remove('hidden');
   document.getElementById('vote-box').classList.add('hidden');
   startTimer(time);
@@ -137,6 +291,9 @@ socket.on('newDiscussionMessage', ({ name, message }) => {
 });
 
 socket.on('startVote', ({ players, time }) => {
+  playSound(soundEffects.vote);
+  // Stop voice chat when voting begins
+  stopVoiceChat();
   document.getElementById('discussion-box').classList.add('hidden');
   document.getElementById('vote-box').classList.remove('hidden');
   
@@ -161,16 +318,66 @@ socket.on('startVote', ({ players, time }) => {
 socket.on('showScores', ({ scores, isFinalRound, winner }) => {
   updateScoreboard(scores);
   
-  // Check if it's the final round
   if (isFinalRound) {
+    playSound(winner.id === socket.id ? soundEffects.correct : soundEffects.wrong);
     // Show game over screen after delay
     setTimeout(() => {
       showGameOverScreen(scores, winner);
     }, 5000);
+  } else {
+    playSound(soundEffects.correct);
   }
 });
 
-// Function to update scoreboard
+socket.on('voiceSignal', ({ signal, senderId }) => {
+  if (!voicePeer) return;
+  
+  // If we're the initiator, create a new peer for this connection
+  if (voicePeer.initiator) {
+    const newPeer = new SimplePeer({ initiator: false, trickle: false });
+    newPeer.addStream(voiceStream);
+    
+    newPeer.on('signal', data => {
+      socket.emit('voiceSignal', { signal: data, room: myRoom, targetId: senderId });
+    });
+    
+    newPeer.on('stream', stream => {
+      const audio = new Audio();
+      audio.srcObject = stream;
+      audio.play();
+      voiceConnections[senderId] = { audio, stream };
+      updateVoiceParticipants();
+    });
+    
+    newPeer.signal(signal);
+    voiceConnections[senderId] = { peer: newPeer };
+  } else {
+    voicePeer.signal(signal);
+  }
+});
+
+socket.on('voiceChatStarted', () => {
+  startVoiceChat();
+});
+
+socket.on('playerLeftVoiceChat', playerId => {
+  if (voiceConnections[playerId]) {
+    if (voiceConnections[playerId].audio) {
+      voiceConnections[playerId].audio.pause();
+      voiceConnections[playerId].audio.srcObject = null;
+    }
+    delete voiceConnections[playerId];
+    updateVoiceParticipants();
+  }
+});
+
+socket.on('newGameStarted', () => {
+  document.getElementById('game-over-screen').classList.add('hidden');
+  document.getElementById('game-screen').classList.remove('hidden');
+  document.getElementById('host-restart').classList.add('hidden');
+});
+
+// Helper functions
 function updateScoreboard(scores) {
   const tbody = document.getElementById('scoreboardBody');
   tbody.innerHTML = '';
@@ -181,14 +388,6 @@ function updateScoreboard(scores) {
   });
 }
 
-// New event for new game started
-socket.on('newGameStarted', () => {
-  document.getElementById('game-over-screen').classList.add('hidden');
-  document.getElementById('game-screen').classList.remove('hidden');
-  document.getElementById('host-restart').classList.add('hidden');
-});
-
-// Function to show game over screen
 function showGameOverScreen(scores, winner) {
   document.getElementById('game-screen').classList.add('hidden');
   document.getElementById('game-over-screen').classList.remove('hidden');
@@ -217,9 +416,22 @@ function startTimer(seconds) {
   const timer = document.getElementById('timeLeft');
   timer.textContent = seconds;
   
+  // Play ticking sound in last 5 seconds
+  const tickInterval = setInterval(() => {
+    if (seconds <= 5 && seconds > 0) {
+      playSound(soundEffects.timer);
+    }
+    if (seconds <= 0) {
+      clearInterval(tickInterval);
+    }
+  }, 1000);
+  
   timerInterval = setInterval(() => {
     seconds--;
     timer.textContent = seconds;
-    if (seconds <= 0) clearInterval(timerInterval);
+    if (seconds <= 0) {
+      clearInterval(timerInterval);
+      clearInterval(tickInterval);
+    }
   }, 1000);
 }
