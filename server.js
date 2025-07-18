@@ -6,12 +6,7 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
+const io = new Server(server);
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -104,6 +99,7 @@ io.on('connection', (socket) => {
     if (!game.votes) game.votes = {};
     game.votes[socket.id] = votedId;
 
+    // Check if we have all votes
     if (Object.keys(game.votes).length === game.players.length) {
       tallyVotes(game, room);
     }
@@ -130,21 +126,28 @@ io.on('connection', (socket) => {
 
   // Voice chat handlers
   socket.on('getVoicePeers', (room) => {
-  const roomSockets = io.sockets.adapter.rooms.get(room);
-  if (roomSockets) {
-    const peers = Array.from(roomSockets);
-    socket.emit('voicePeers', peers);
-    
-    // Notify others about new peer
-    socket.to(room).emit('newVoicePeer', socket.id);
-  }
-});
+    const roomSockets = io.sockets.adapter.rooms.get(room);
+    if (roomSockets) {
+      const peers = Array.from(roomSockets);
+      socket.emit('voicePeers', peers);
+      
+      // Notify others about new peer
+      socket.to(room).emit('newVoicePeer', socket.id);
+    }
+  });
 
   socket.on('voiceSignal', ({ signal, targetId, room }) => {
     if (targetId) {
       // Send to specific target
       io.to(targetId).emit('voiceSignal', { signal, senderId: socket.id });
     }
+  });
+
+  socket.on('muteState', ({ isMuted, room }) => {
+    socket.to(room).emit('remoteMuteState', { 
+      playerId: socket.id, 
+      isMuted 
+    });
   });
 
   socket.on('leaveVoiceChat', (room) => {
@@ -157,14 +160,6 @@ io.on('connection', (socket) => {
       socket.to(room).emit('playerLeftVoiceChat', socket.id);
     }
   });
-
-  // Add new mute state handler
-socket.on('muteState', ({ isMuted, room }) => {
-  socket.to(room).emit('remoteMuteState', { 
-    playerId: socket.id, 
-    isMuted 
-  });
-});
 
   function tallyVotes(game, room) {
     // Clear any existing vote timeout
@@ -274,8 +269,8 @@ function startRound(room) {
 
         // Set timeout to automatically tally votes
         game.voteTimeout = setTimeout(() => {
+          // Always tally votes, even if not all votes are in
           if (Object.keys(game.votes || {}).length > 0) {
-            // Only tally if at least one vote was submitted
             tallyVotes(game, room);
           } else {
             // Skip to next round if no votes
