@@ -3,66 +3,69 @@ let myName = '';
 let myRoom = '';
 let isHost = false;
 let timerInterval;
-let audioContextUnlocked = false;
 
-// Sound effects configuration
-const soundEffects = {
-  timer: "/sounds/timer.mp3",
-  correct: "/sounds/correct.mp3",
-  wrong: "/sounds/wrong.mp3",
-  start: "/sounds/start.mp3",
-  vote: "/sounds/vote.mp3"
-};
-
-let isSoundEnabled = true;
+// Voice chat variables
 let voiceStream = null;
 let voiceConnections = {};
 let voicePeer = null;
 let isMuted = false;
 
-// Unlock audio context on first user interaction
-document.addEventListener('click', () => {
-  if (!audioContextUnlocked) {
-    // Create a silent audio context to unlock audio
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = ctx.createOscillator();
-    oscillator.connect(ctx.destination);
-    oscillator.start();
-    oscillator.stop(ctx.currentTime + 0.001);
-    audioContextUnlocked = true;
-  }
-}, { once: true });
-
-// Sound control button
-const soundControl = document.createElement('div');
-soundControl.id = 'sound-control';
-soundControl.innerHTML = '<i class="fas fa-volume-up"></i>';
-soundControl.onclick = () => {
-  isSoundEnabled = !isSoundEnabled;
-  soundControl.innerHTML = isSoundEnabled 
-    ? '<i class="fas fa-volume-up"></i>' 
-    : '<i class="fas fa-volume-mute"></i>';
-  localStorage.setItem('soundEnabled', isSoundEnabled);
+// Game event handlers
+document.getElementById('joinBtn').onclick = () => {
+  myName = document.getElementById('playerName').value.trim();
+  myRoom = document.getElementById('roomCode').value.trim().toUpperCase();
+  if (myName && myRoom) socket.emit('joinRoom', { name: myName, room: myRoom });
 };
-document.body.appendChild(soundControl);
 
-// Check sound preference from localStorage
-if (localStorage.getItem('soundEnabled') === 'false') {
-  isSoundEnabled = false;
-  soundControl.innerHTML = '<i class="fas fa-volume-mute"></i>';
-}
+document.getElementById('createBtn').onclick = () => {
+  myName = document.getElementById('playerName').value.trim();
+  if (myName) socket.emit('createRoom', { name: myName });
+};
 
-// Play sound helper function
-function playSound(soundType) {
-  if (!isSoundEnabled || !audioContextUnlocked) return;
-  
-  try {
-    const audio = new Audio(soundEffects[soundType]);
-    audio.play().catch(e => console.log("Sound play failed:", e));
-  } catch (e) {
-    console.error("Error playing sound:", e);
+document.getElementById('startGame').onclick = () => {
+  const settings = {
+    answerTime: +document.getElementById('answerTime').value,
+    discussionTime: +document.getElementById('discussionTime').value,
+    voteTime: +document.getElementById('voteTime').value,
+    rounds: +document.getElementById('rounds').value
+  };
+  socket.emit('startGame', settings);
+};
+
+document.getElementById('submitAnswer').onclick = () => {
+  const answer = document.getElementById('answerInput').value.trim();
+  if (answer) {
+    socket.emit('submitAnswer', answer);
+    document.getElementById('answerInput').disabled = true;
+    document.getElementById('submitAnswer').disabled = true;
+  } else {
+    alert("Please enter an answer!");
   }
-}
+};
+
+document.getElementById('submitDiscussion').onclick = () => {
+  const msg = document.getElementById('discussionInput').value.trim();
+  if (msg) {
+    socket.emit('discussionMessage', msg);
+    document.getElementById('discussionInput').value = '';
+  } else {
+    alert("Please enter a message!");
+  }
+};
+
+document.getElementById('submitVote').onclick = () => {
+  const selected = document.querySelector('input[name="vote"]:checked');
+  if (selected) {
+    socket.emit('submitVote', selected.value);
+    document.getElementById('submitVote').disabled = true;
+  } else {
+    alert("Please select a player!");
+  }
+};
+
+document.getElementById('restartGame').onclick = () => {
+  socket.emit('restartGame');
+};
 
 // Voice chat functions
 async function startVoiceChat() {
@@ -155,75 +158,29 @@ function updateVoiceParticipants() {
 // Voice chat controls
 document.getElementById('mute-mic-btn').onclick = () => {
   isMuted = !isMuted;
+  
   if (voiceStream) {
-    voiceStream.getAudioTracks()[0].enabled = !isMuted;
+    voiceStream.getAudioTracks().forEach(track => {
+      track.enabled = !isMuted;
+    });
   }
-  document.getElementById('mute-mic-btn').innerHTML = isMuted 
-    ? '<i class="fas fa-microphone-slash"></i> Unmute' 
-    : '<i class="fas fa-microphone"></i> Mute';
+  
+  // Update button text and icon
+  const micBtn = document.getElementById('mute-mic-btn');
+  if (isMuted) {
+    micBtn.innerHTML = '<i class="fas fa-microphone-slash"></i> Unmute';
+    micBtn.classList.add('danger');
+  } else {
+    micBtn.innerHTML = '<i class="fas fa-microphone"></i> Mute';
+    micBtn.classList.remove('danger');
+  }
+  
   updateVoiceParticipants();
 };
 
 document.getElementById('leave-voice-btn').onclick = () => {
   stopVoiceChat();
   socket.emit('leaveVoiceChat');
-};
-
-// Game event handlers
-document.getElementById('joinBtn').onclick = () => {
-  myName = document.getElementById('playerName').value.trim();
-  myRoom = document.getElementById('roomCode').value.trim().toUpperCase();
-  if (myName && myRoom) socket.emit('joinRoom', { name: myName, room: myRoom });
-};
-
-document.getElementById('createBtn').onclick = () => {
-  myName = document.getElementById('playerName').value.trim();
-  if (myName) socket.emit('createRoom', { name: myName });
-};
-
-document.getElementById('startGame').onclick = () => {
-  const settings = {
-    answerTime: +document.getElementById('answerTime').value,
-    discussionTime: +document.getElementById('discussionTime').value,
-    voteTime: +document.getElementById('voteTime').value,
-    rounds: +document.getElementById('rounds').value
-  };
-  socket.emit('startGame', settings);
-};
-
-document.getElementById('submitAnswer').onclick = () => {
-  const answer = document.getElementById('answerInput').value.trim();
-  if (answer) {
-    socket.emit('submitAnswer', answer);
-    document.getElementById('answerInput').disabled = true;
-    document.getElementById('submitAnswer').disabled = true;
-  } else {
-    alert("Please enter an answer!");
-  }
-};
-
-document.getElementById('submitDiscussion').onclick = () => {
-  const msg = document.getElementById('discussionInput').value.trim();
-  if (msg) {
-    socket.emit('discussionMessage', msg);
-    document.getElementById('discussionInput').value = '';
-  } else {
-    alert("Please enter a message!");
-  }
-};
-
-document.getElementById('submitVote').onclick = () => {
-  const selected = document.querySelector('input[name="vote"]:checked');
-  if (selected) {
-    socket.emit('submitVote', selected.value);
-    document.getElementById('submitVote').disabled = true;
-  } else {
-    alert("Please select a player!");
-  }
-};
-
-document.getElementById('restartGame').onclick = () => {
-  socket.emit('restartGame');
 };
 
 // Socket event handlers
@@ -236,7 +193,9 @@ socket.on('roomJoined', ({ room, players, host }) => {
   updatePlayerList(players);
 });
 
-socket.on('updatePlayers', updatePlayerList);
+socket.on('updatePlayers', players => {
+  updatePlayerList(players);
+});
 
 function updatePlayerList(players) {
   const list = document.getElementById('playerList');
@@ -249,14 +208,12 @@ function updatePlayerList(players) {
 }
 
 socket.on('gameStarted', () => {
-  playSound('start');
   document.getElementById('lobby-screen').classList.add('hidden');
   document.getElementById('game-screen').classList.remove('hidden');
   document.getElementById('game-over-screen').classList.add('hidden');
 });
 
 socket.on('roundStart', ({ round, question, time }) => {
-  playSound('start');
   document.getElementById('roundNum').textContent = round;
   document.getElementById('displayQuestion').textContent = question;
   
@@ -289,7 +246,6 @@ socket.on('revealAnswers', ({ question, answers }) => {
 });
 
 socket.on('startDiscussion', ({ time }) => {
-  playSound('timer');
   // Start voice chat when discussion begins
   if (navigator.mediaDevices) {
     socket.emit('startVoiceChat');
@@ -310,7 +266,6 @@ socket.on('newDiscussionMessage', ({ name, message }) => {
 });
 
 socket.on('startVote', ({ players, time }) => {
-  playSound('vote');
   // Stop voice chat when voting begins
   stopVoiceChat();
   document.getElementById('discussion-box').classList.add('hidden');
@@ -337,13 +292,10 @@ socket.on('showScores', ({ scores, isFinalRound, winner }) => {
   updateScoreboard(scores);
   
   if (isFinalRound) {
-    playSound(winner.id === socket.id ? 'correct' : 'wrong');
     // Show game over screen after delay
     setTimeout(() => {
       showGameOverScreen(scores, winner);
     }, 5000);
-  } else {
-    playSound('correct');
   }
 });
 
@@ -434,22 +386,11 @@ function startTimer(seconds) {
   const timer = document.getElementById('timeLeft');
   timer.textContent = seconds;
   
-  // Play ticking sound in last 5 seconds
-  const tickInterval = setInterval(() => {
-    if (seconds <= 5 && seconds > 0) {
-      playSound('timer');
-    }
-    if (seconds <= 0) {
-      clearInterval(tickInterval);
-    }
-  }, 1000);
-  
   timerInterval = setInterval(() => {
     seconds--;
     timer.textContent = seconds;
     if (seconds <= 0) {
       clearInterval(timerInterval);
-      clearInterval(tickInterval);
     }
   }, 1000);
 }
