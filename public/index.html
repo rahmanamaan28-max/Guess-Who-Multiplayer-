@@ -39,7 +39,7 @@
     
     #game-container {
       width: 100%;
-      max-width: 800px;
+      max-width: 1000px;
       margin: 20px auto;
       background: rgba(255, 255, 255, 0.95);
       padding: 30px;
@@ -58,28 +58,24 @@
     
     h3 {
       color: var(--primary);
-      margin: 20px 0 10px;
+      margin: 0 0 15px;
       font-size: 1.5rem;
       text-align: center;
     }
     
     h4 {
       color: var(--secondary);
-      margin-bottom: 15px;
+      margin-bottom: 10px;
       font-size: 1.2rem;
     }
     
     .screen-section {
-      margin-top: 25px;
-      padding: 25px;
+      margin-top: 15px;
+      padding: 20px;
       border-radius: var(--border-radius);
       background: var(--light);
       box-shadow: 0 4px 12px rgba(0,0,0,0.05);
       transition: var(--transition);
-    }
-    
-    .screen-section:hover {
-      box-shadow: 0 6px 16px rgba(0,0,0,0.1);
     }
     
     input[type="text"], input[type="number"] {
@@ -99,7 +95,7 @@
     }
     
     button {
-      padding: 14px 28px;
+      padding: 12px 24px;
       margin: 10px 5px;
       background-color: var(--primary);
       color: white;
@@ -152,7 +148,7 @@
       text-align: center;
       font-size: 1.4rem;
       font-weight: bold;
-      margin: 20px 0;
+      margin: 10px 0;
       padding: 12px;
       background: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);
       color: white;
@@ -164,7 +160,7 @@
       width: 100%;
       border-collapse: separate;
       border-spacing: 0;
-      margin-top: 15px;
+      margin-top: 10px;
       border-radius: var(--border-radius);
       overflow: hidden;
       box-shadow: 0 4px 6px rgba(0,0,0,0.05);
@@ -173,13 +169,13 @@
     th {
       background-color: var(--primary);
       color: white;
-      padding: 15px;
+      padding: 12px;
       text-align: center;
       font-weight: 600;
     }
     
     td {
-      padding: 12px 15px;
+      padding: 10px 12px;
       text-align: center;
       border-bottom: 1px solid var(--light-gray);
     }
@@ -220,14 +216,6 @@
       background-color: #f1f1f1;
       margin-right: auto;
       border-bottom-left-radius: 4px;
-    }
-    
-    .message.system {
-      background-color: #e8f5e9;
-      margin: 10px auto;
-      text-align: center;
-      max-width: 90%;
-      font-style: italic;
     }
     
     .player-badge {
@@ -296,6 +284,43 @@
       margin-top: 15px;
     }
     
+    /* Game layout */
+    .game-layout {
+      display: flex;
+      flex-direction: column;
+      height: 70vh;
+    }
+    
+    .top-section {
+      display: flex;
+      flex: 1;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .question-phase {
+      flex: 3;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .scoreboard-container {
+      flex: 1;
+      min-width: 250px;
+    }
+    
+    .main-phase {
+      flex: 3;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .phase-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    
     /* Game Over Screen */
     #game-over-screen {
       text-align: center;
@@ -303,7 +328,6 @@
       background: rgba(255, 255, 255, 0.95);
       border-radius: var(--border-radius);
       box-shadow: var(--box-shadow);
-      margin-top: 20px;
     }
     
     .final-scores {
@@ -335,7 +359,15 @@
       font-size: 1.3rem;
     }
     
-    @media (max-width: 600px) {
+    @media (max-width: 900px) {
+      .top-section {
+        flex-direction: column;
+      }
+      
+      .scoreboard-container {
+        min-width: auto;
+      }
+      
       #game-container {
         padding: 15px;
       }
@@ -352,11 +384,7 @@
         width: 100%;
         margin: 8px 0;
       }
-      
-      #voteOptions {
-        grid-template-columns: 1fr;
-      }
-    }
+
   </style>
 </head>
 <body>
@@ -390,54 +418,64 @@
     <div id="game-screen" class="hidden">
       <h3>Round: <span id="roundNum"></span></h3>
       <div id="timer">Time left: <span id="timeLeft">0</span>s</div>
-
-      <div id="question-box" class="screen-section">
-        <h4>Question:</h4>
-        <p id="displayQuestion"></p>
-      </div>
-
-      <div id="answer-box" class="screen-section">
-        <input type="text" id="answerInput" placeholder="Type your answer..." />
-        <div class="btn-group">
-          <button id="submitAnswer">Submit Answer</button>
+      
+      <div class="game-layout">
+        <!-- Top 40% section -->
+        <div class="top-section screen-section">
+          <h4>Question:</h4>
+          <p id="displayQuestion"></p>
+          
+          <div id="answer-box">
+            <input type="text" id="answerInput" placeholder="Type your answer..." />
+            <div class="btn-group">
+              <button id="submitAnswer">Submit Answer</button>
+            </div>
+          </div>
+          
+          <div id="answers-table" class="hidden">
+            <h4>Answers:</h4>
+            <table>
+              <thead>
+                <tr><th>Player</th><th>Answer</th></tr>
+              </thead>
+              <tbody id="answersBody"></tbody>
+            </table>
+          </div>
         </div>
-      </div>
-
-      <div id="answers-table" class="screen-section hidden">
-        <h4>Answers:</h4>
-        <table>
-          <thead>
-            <tr><th>Player</th><th>Answer</th></tr>
-          </thead>
-          <tbody id="answersBody"></tbody>
-        </table>
-      </div>
-
-      <div id="discussion-box" class="screen-section hidden">
-        <h4>Discussion:</h4>
-        <div id="discussionMessages"></div>
-        <input type="text" id="discussionInput" placeholder="Type your message..." />
-        <div class="btn-group">
-          <button id="submitDiscussion">Send</button>
+        
+        <!-- Bottom 60% section -->
+        <div class="bottom-section">
+          <!-- Left 20% - Scoreboard -->
+          <div class="scoreboard-container screen-section">
+            <h4>Scoreboard</h4>
+            <table>
+              <thead>
+                <tr><th>Player</th><th>Score</th></tr>
+              </thead>
+              <tbody id="scoreboardBody"></tbody>
+            </table>
+          </div>
+          
+          <!-- Right 80% - Discussion/Voting -->
+          <div class="main-phase screen-section">
+            <div id="discussion-box">
+              <h4>Discussion:</h4>
+              <div id="discussionMessages"></div>
+              <input type="text" id="discussionInput" placeholder="Type your message..." />
+              <div class="btn-group">
+                <button id="submitDiscussion">Send</button>
+              </div>
+            </div>
+            
+            <div id="vote-box" class="hidden">
+              <h4>Vote: Who is the imposter?</h4>
+              <div id="voteOptions"></div>
+              <div class="btn-group">
+                <button id="submitVote">Submit Vote</button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div id="vote-box" class="screen-section hidden">
-        <h4>Vote: Who is the imposter?</h4>
-        <div id="voteOptions"></div>
-        <div class="btn-group">
-          <button id="submitVote">Submit Vote</button>
-        </div>
-      </div>
-
-      <div id="scoreboard" class="screen-section hidden">
-        <h4>Scoreboard</h4>
-        <table>
-          <thead>
-            <tr><th>Player</th><th>Score</th></tr>
-          </thead>
-          <tbody id="scoreboardBody"></tbody>
-        </table>
       </div>
     </div>
 
