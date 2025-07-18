@@ -3,14 +3,15 @@ let myName = '';
 let myRoom = '';
 let isHost = false;
 let timerInterval;
+let audioContextUnlocked = false;
 
-// Sound effects
+// Sound effects configuration
 const soundEffects = {
-  timer: document.getElementById('timerSound'),
-  correct: document.getElementById('correctSound'),
-  wrong: document.getElementById('wrongSound'),
-  start: document.getElementById('startSound'),
-  vote: document.getElementById('voteSound')
+  timer: "/sounds/timer.mp3",
+  correct: "/sounds/correct.mp3",
+  wrong: "/sounds/wrong.mp3",
+  start: "/sounds/start.mp3",
+  vote: "/sounds/vote.mp3"
 };
 
 let isSoundEnabled = true;
@@ -18,6 +19,19 @@ let voiceStream = null;
 let voiceConnections = {};
 let voicePeer = null;
 let isMuted = false;
+
+// Unlock audio context on first user interaction
+document.addEventListener('click', () => {
+  if (!audioContextUnlocked) {
+    // Create a silent audio context to unlock audio
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = ctx.createOscillator();
+    oscillator.connect(ctx.destination);
+    oscillator.start();
+    oscillator.stop(ctx.currentTime + 0.001);
+    audioContextUnlocked = true;
+  }
+}, { once: true });
 
 // Sound control button
 const soundControl = document.createElement('div');
@@ -39,10 +53,15 @@ if (localStorage.getItem('soundEnabled') === 'false') {
 }
 
 // Play sound helper function
-function playSound(sound) {
-  if (!isSoundEnabled) return;
-  sound.currentTime = 0;
-  sound.play().catch(e => console.log("Sound play failed:", e));
+function playSound(soundType) {
+  if (!isSoundEnabled || !audioContextUnlocked) return;
+  
+  try {
+    const audio = new Audio(soundEffects[soundType]);
+    audio.play().catch(e => console.log("Sound play failed:", e));
+  } catch (e) {
+    console.error("Error playing sound:", e);
+  }
 }
 
 // Voice chat functions
@@ -230,14 +249,14 @@ function updatePlayerList(players) {
 }
 
 socket.on('gameStarted', () => {
-  playSound(soundEffects.start);
+  playSound('start');
   document.getElementById('lobby-screen').classList.add('hidden');
   document.getElementById('game-screen').classList.remove('hidden');
   document.getElementById('game-over-screen').classList.add('hidden');
 });
 
 socket.on('roundStart', ({ round, question, time }) => {
-  playSound(soundEffects.start);
+  playSound('start');
   document.getElementById('roundNum').textContent = round;
   document.getElementById('displayQuestion').textContent = question;
   
@@ -270,7 +289,7 @@ socket.on('revealAnswers', ({ question, answers }) => {
 });
 
 socket.on('startDiscussion', ({ time }) => {
-  playSound(soundEffects.timer);
+  playSound('timer');
   // Start voice chat when discussion begins
   if (navigator.mediaDevices) {
     socket.emit('startVoiceChat');
@@ -291,7 +310,7 @@ socket.on('newDiscussionMessage', ({ name, message }) => {
 });
 
 socket.on('startVote', ({ players, time }) => {
-  playSound(soundEffects.vote);
+  playSound('vote');
   // Stop voice chat when voting begins
   stopVoiceChat();
   document.getElementById('discussion-box').classList.add('hidden');
@@ -309,7 +328,6 @@ socket.on('startVote', ({ players, time }) => {
       ${p.name}
     `;
     container.appendChild(label);
-    container.appendChild(document.createElement('br'));
   });
   document.getElementById('submitVote').disabled = false;
   startTimer(time);
@@ -319,13 +337,13 @@ socket.on('showScores', ({ scores, isFinalRound, winner }) => {
   updateScoreboard(scores);
   
   if (isFinalRound) {
-    playSound(winner.id === socket.id ? soundEffects.correct : soundEffects.wrong);
+    playSound(winner.id === socket.id ? 'correct' : 'wrong');
     // Show game over screen after delay
     setTimeout(() => {
       showGameOverScreen(scores, winner);
     }, 5000);
   } else {
-    playSound(soundEffects.correct);
+    playSound('correct');
   }
 });
 
@@ -419,7 +437,7 @@ function startTimer(seconds) {
   // Play ticking sound in last 5 seconds
   const tickInterval = setInterval(() => {
     if (seconds <= 5 && seconds > 0) {
-      playSound(soundEffects.timer);
+      playSound('timer');
     }
     if (seconds <= 0) {
       clearInterval(tickInterval);
