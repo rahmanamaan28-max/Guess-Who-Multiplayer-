@@ -354,17 +354,18 @@
       font-size: 1.3rem;
     }
     
-    /* Voice Chat Styles */
+    /* Compact Voice Chat Styles */
     #voice-chat-overlay {
       position: fixed;
-      bottom: 20px;
-      right: 20px;
+      bottom: 15px;
+      right: 15px;
       z-index: 1000;
       background: rgba(255, 255, 255, 0.95);
-      border-radius: var(--border-radius);
-      padding: 15px;
-      box-shadow: var(--box-shadow);
-      width: 300px;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      width: 240px;
+      font-size: 0.9rem;
     }
   
     .voice-chat-container {
@@ -372,23 +373,30 @@
       flex-direction: column;
     }
   
+    .voice-chat-container h4 {
+      font-size: 1rem;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+  
     .voice-chat-controls {
       display: flex;
-      gap: 10px;
-      margin-top: 10px;
+      gap: 8px;
+      margin-top: 8px;
     }
   
     .voice-btn {
       flex: 1;
-      padding: 8px;
-      border-radius: 8px;
+      padding: 6px;
+      border-radius: 6px;
       border: none;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 5px;
+      gap: 4px;
       background: var(--light-gray);
+      font-size: 0.85rem;
     }
   
     .voice-btn:hover {
@@ -407,18 +415,20 @@
     }
   
     #voice-participants {
-      margin-top: 10px;
-      max-height: 200px;
+      margin-top: 8px;
+      max-height: 150px;
       overflow-y: auto;
+      font-size: 0.85rem;
     }
   
     .participant {
       display: flex;
       align-items: center;
-      padding: 8px;
-      border-radius: 8px;
+      padding: 6px;
+      border-radius: 6px;
       background: var(--light-gray);
-      margin-bottom: 5px;
+      margin-bottom: 4px;
+      font-size: 0.85rem;
     }
   
     .participant-you {
@@ -448,7 +458,7 @@
       right: 20px;
       background: rgba(255, 255, 255, 0.9);
       border-radius: var(--border-radius);
-      padding: 15px;
+      padding: 10px;
       box-shadow: var(--box-shadow);
       z-index: 100;
       max-width: 250px;
@@ -459,30 +469,32 @@
     #floating-scoreboard h4 {
       margin-top: 0;
       text-align: center;
+      font-size: 0.95rem;
     }
     
     #floating-scoreboard table {
       width: 100%;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
     }
     
     #floating-scoreboard th {
-      padding: 8px;
+      padding: 4px 6px;
       font-size: 0.8rem;
     }
     
     #floating-scoreboard td {
-      padding: 6px 8px;
+      padding: 4px 6px;
     }
     
     #toggle-scoreboard {
       position: absolute;
-      top: 5px;
-      right: 5px;
+      top: 3px;
+      right: 3px;
       background: transparent;
       border: none;
       cursor: pointer;
-      font-size: 1.2rem;
+      font-size: 1rem;
+      padding: 2px 6px;
     }
   
     @media (max-width: 900px) {
@@ -512,14 +524,14 @@
       }
       
       #voice-chat-overlay {
-        width: 250px;
+        width: 220px;
         right: 10px;
         bottom: 10px;
       }
       
       #floating-scoreboard {
         max-width: 200px;
-        padding: 10px;
+        padding: 8px;
       }
     }
     
@@ -655,7 +667,7 @@
     </table>
   </div>
 
-  <!-- Voice chat UI -->
+  <!-- Compact Voice chat UI -->
   <div id="voice-chat-overlay" class="hidden">
     <div class="voice-chat-container">
       <h4>Voice Chat</h4>
