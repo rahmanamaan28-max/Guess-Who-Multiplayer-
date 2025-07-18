@@ -42,13 +42,7 @@ document.getElementById('submitAnswer').onclick = () => {
   }
 };
 
-document.getElementById('discussionInput').addEventListener('keypress', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    document.getElementById('submitDiscussion').click();
-  }
-});
-
+// Submit discussion message handler
 document.getElementById('submitDiscussion').onclick = () => {
   const msg = document.getElementById('discussionInput').value.trim();
   if (msg) {
@@ -58,6 +52,14 @@ document.getElementById('submitDiscussion').onclick = () => {
     alert("Please enter a message!");
   }
 };
+
+// Enter key support for discussion messages
+document.getElementById('discussionInput').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('submitDiscussion').click();
+  }
+});
 
 document.getElementById('submitVote').onclick = () => {
   const selected = document.querySelector('input[name="vote"]:checked');
@@ -89,7 +91,8 @@ async function startVoiceChat() {
     voiceStream = await navigator.mediaDevices.getUserMedia({ 
       audio: {
         echoCancellation: true,
-        noiseSuppression: true
+        noiseSuppression: true,
+        autoGainControl: true
       }
     });
     
@@ -111,24 +114,30 @@ function createPeerConnection(peerId, isInitiator) {
     config: {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' }
       ]
     }
   });
 
   peer.on('signal', data => {
-    socket.emit('voiceSignal', { 
-      signal: data, 
-      targetId: peerId,
-      room: myRoom 
-    });
+    // Only send offer/answer, not ICE candidates
+    if (data.type === 'offer' || data.type === 'answer') {
+      socket.emit('voiceSignal', { 
+        signal: data, 
+        targetId: peerId,
+        room: myRoom 
+      });
+    }
   });
 
   peer.on('stream', stream => {
     if (!voiceConnections[peerId]) {
       const audio = new Audio();
       audio.srcObject = stream;
-      audio.play();
+      audio.volume = 0.8; // Prevent loud volumes
+      audio.play()
+        .catch(e => console.log("Audio play failed:", e));
       voiceConnections[peerId] = { audio, peer, stream };
       updateVoiceParticipants();
     }
@@ -356,10 +365,6 @@ socket.on('voiceSignal', ({ signal, senderId }) => {
     peer.signal(signal);
     voiceConnections[senderId] = { peer };
   }
-});
-
-socket.on('voiceChatStarted', () => {
-  // Not used in this implementation
 });
 
 socket.on('newVoicePeer', (peerId) => {
