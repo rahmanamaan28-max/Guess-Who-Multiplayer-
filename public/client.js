@@ -66,6 +66,12 @@ document.getElementById('restartGame').onclick = () => {
   socket.emit('restartGame');
 };
 
+// Floating scoreboard toggle
+document.getElementById('toggle-scoreboard').addEventListener('click', () => {
+  const scoreboard = document.getElementById('floating-scoreboard');
+  scoreboard.style.display = scoreboard.style.display === 'none' ? 'block' : 'none';
+});
+
 // Voice chat functions
 async function startVoiceChat() {
   try {
@@ -93,7 +99,7 @@ async function startVoiceChat() {
 function createPeerConnection(peerId, isInitiator) {
   const peer = new SimplePeer({
     initiator: isInitiator,
-    trickle: true, // Changed to true for better NAT traversal
+    trickle: true,
     stream: voiceStream,
     config: {
       iceServers: [
@@ -102,7 +108,7 @@ function createPeerConnection(peerId, isInitiator) {
       ]
     }
   });
-  
+
   peer.on('signal', data => {
     socket.emit('voiceSignal', { 
       signal: data, 
@@ -157,8 +163,6 @@ function stopVoiceChat() {
 }
 
 function updateVoiceParticipants() {
-// Update voice participants display
-function updateVoiceParticipants() {
   const container = document.getElementById('voice-participants');
   container.innerHTML = '';
   
@@ -177,15 +181,7 @@ function updateVoiceParticipants() {
   });
 }
 
-// Add new event for remote mute states
-socket.on('remoteMuteState', ({ playerId, isMuted }) => {
-  if (voiceConnections[playerId]) {
-    voiceConnections[playerId].isMuted = isMuted;
-    updateVoiceParticipants();
-  }
-});
-
-// Update mute button handler
+// Voice chat controls
 document.getElementById('mute-mic-btn').onclick = () => {
   isMuted = !isMuted;
   
@@ -197,16 +193,6 @@ document.getElementById('mute-mic-btn').onclick = () => {
   
   // Broadcast mute state to others
   socket.emit('muteState', { isMuted, room: myRoom });
-  
-// Voice chat controls
-document.getElementById('mute-mic-btn').onclick = () => {
-  isMuted = !isMuted;
-  
-  if (voiceStream) {
-    voiceStream.getAudioTracks().forEach(track => {
-      track.enabled = !isMuted;
-    });
-  }
   
   // Update button text and icon
   const micBtn = document.getElementById('mute-mic-btn');
@@ -254,6 +240,7 @@ socket.on('gameStarted', () => {
   document.getElementById('lobby-screen').classList.add('hidden');
   document.getElementById('game-screen').classList.remove('hidden');
   document.getElementById('game-over-screen').classList.add('hidden');
+  document.getElementById('floating-scoreboard').style.display = 'block';
 });
 
 socket.on('roundStart', ({ round, question, time }) => {
@@ -388,38 +375,37 @@ socket.on('playerLeftVoiceChat', playerId => {
   }
 });
 
+socket.on('remoteMuteState', ({ playerId, isMuted }) => {
+  if (voiceConnections[playerId]) {
+    voiceConnections[playerId].isMuted = isMuted;
+    updateVoiceParticipants();
+  }
+});
+
 socket.on('newGameStarted', () => {
   document.getElementById('game-over-screen').classList.add('hidden');
   document.getElementById('game-screen').classList.remove('hidden');
   document.getElementById('host-restart').classList.add('hidden');
-});
-
-socket.on('voicePeers', (peerIds) => {
-  document.getElementById('voice-chat-status').textContent = 'Connected';
-  
-  peerIds.forEach(peerId => {
-    if (!voiceConnections[peerId] && peerId !== socket.id) {
-      const isInitiator = socket.id < peerId;
-      const peer = createPeerConnection(peerId, isInitiator);
-      voiceConnections[peerId] = { peer };
-    }
-  });
+  document.getElementById('floating-scoreboard').style.display = 'block';
 });
 
 // Helper functions
 function updateScoreboard(scores) {
-  const tbody = document.getElementById('scoreboardBody');
-  tbody.innerHTML = '';
+  // Update floating scoreboard
+  const floatingBody = document.getElementById('floating-scoreboard-body');
+  floatingBody.innerHTML = '';
+  
   scores.forEach(p => {
-    const row = document.createElement('tr');
-    row.innerHTML = `<td>${p.name}</td><td>${p.score}</td>`;
-    tbody.appendChild(row);
+    const floatingRow = document.createElement('tr');
+    floatingRow.innerHTML = `<td>${p.name}</td><td>${p.score}</td>`;
+    floatingBody.appendChild(floatingRow);
   });
 }
 
 function showGameOverScreen(scores, winner) {
   document.getElementById('game-screen').classList.add('hidden');
   document.getElementById('game-over-screen').classList.remove('hidden');
+  document.getElementById('floating-scoreboard').style.display = 'none';
   
   // Populate final scores
   const tbody = document.getElementById('final-scores');
@@ -448,8 +434,11 @@ function startTimer(seconds) {
   timerInterval = setInterval(() => {
     seconds--;
     timer.textContent = seconds;
+    
+    // Disable vote submission when time runs out
     if (seconds <= 0) {
       clearInterval(timerInterval);
+      document.getElementById('submitVote').disabled = true;
     }
   }, 1000);
 }
