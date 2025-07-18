@@ -124,43 +124,6 @@ io.on('connection', (socket) => {
     startRound(room);
   });
 
-  // Voice chat handlers
-  socket.on('getVoicePeers', (room) => {
-    const roomSockets = io.sockets.adapter.rooms.get(room);
-    if (roomSockets) {
-      const peers = Array.from(roomSockets).filter(id => id !== socket.id);
-      socket.emit('voicePeers', peers);
-      
-      // Notify others about new peer
-      socket.to(room).emit('newVoicePeer', socket.id);
-    }
-  });
-
-  socket.on('voiceSignal', ({ signal, targetId, room }) => {
-    if (targetId && signal && (signal.type === 'offer' || signal.type === 'answer')) {
-      // Send to specific target
-      io.to(targetId).emit('voiceSignal', { signal, senderId: socket.id });
-    }
-  });
-
-  socket.on('muteState', ({ isMuted, room }) => {
-    socket.to(room).emit('remoteMuteState', { 
-      playerId: socket.id, 
-      isMuted 
-    });
-  });
-
-  socket.on('leaveVoiceChat', (room) => {
-    socket.to(room).emit('playerLeftVoiceChat', socket.id);
-  });
-
-  socket.on('disconnect', () => {
-    const room = getRoom(socket);
-    if (room) {
-      socket.to(room).emit('playerLeftVoiceChat', socket.id);
-    }
-  });
-
   function tallyVotes(game, room) {
     // Clear any existing vote timeout
     if (game.voteTimeout) {
