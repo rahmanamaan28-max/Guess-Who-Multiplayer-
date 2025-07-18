@@ -304,11 +304,6 @@
       flex-direction: column;
     }
     
-    .scoreboard-container {
-      flex: 1;
-      min-width: 250px;
-    }
-    
     .main-phase {
       flex: 3;
       display: flex;
@@ -445,14 +440,54 @@
       50% { background: rgba(76, 201, 240, 0.4); }
       100% { background: rgba(76, 201, 240, 0.2); }
     }
+    
+    /* Floating Scoreboard */
+    #floating-scoreboard {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: var(--border-radius);
+      padding: 15px;
+      box-shadow: var(--box-shadow);
+      z-index: 100;
+      max-width: 250px;
+      border: 1px solid var(--light-gray);
+      display: none;
+    }
+    
+    #floating-scoreboard h4 {
+      margin-top: 0;
+      text-align: center;
+    }
+    
+    #floating-scoreboard table {
+      width: 100%;
+      font-size: 0.9rem;
+    }
+    
+    #floating-scoreboard th {
+      padding: 8px;
+      font-size: 0.8rem;
+    }
+    
+    #floating-scoreboard td {
+      padding: 6px 8px;
+    }
+    
+    #toggle-scoreboard {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 1.2rem;
+    }
   
     @media (max-width: 900px) {
       .top-section {
         flex-direction: column;
-      }
-      
-      .scoreboard-container {
-        min-width: auto;
       }
       
       #game-container {
@@ -481,6 +516,11 @@
         right: 10px;
         bottom: 10px;
       }
+      
+      #floating-scoreboard {
+        max-width: 200px;
+        padding: 10px;
+      }
     }
     
     @media (max-width: 600px) {
@@ -495,6 +535,11 @@
       #voice-chat-overlay {
         width: calc(100% - 20px);
         right: 10px;
+      }
+      
+      #floating-scoreboard {
+        max-width: 150px;
+        font-size: 0.8rem;
       }
     }
   </style>
@@ -554,16 +599,6 @@
               </table>
             </div>
           </div>
-          
-          <div class="scoreboard-container screen-section">
-            <h4>Scoreboard</h4>
-            <table>
-              <thead>
-                <tr><th>Player</th><th>Score</th></tr>
-              </thead>
-              <tbody id="scoreboardBody"></tbody>
-            </table>
-          </div>
         </div>
         
         <div class="main-phase screen-section">
@@ -606,6 +641,18 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Floating Scoreboard -->
+  <div id="floating-scoreboard">
+    <button id="toggle-scoreboard">&times;</button>
+    <h4>Scoreboard</h4>
+    <table>
+      <thead>
+        <tr><th>Player</th><th>Score</th></tr>
+      </thead>
+      <tbody id="floating-scoreboard-body"></tbody>
+    </table>
   </div>
 
   <!-- Voice chat UI -->
