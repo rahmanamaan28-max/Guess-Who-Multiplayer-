@@ -102,7 +102,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // New restart game handler
   socket.on('restartGame', () => {
     const room = getRoom(socket);
     const game = rooms[room];
@@ -120,6 +119,34 @@ io.on('connection', (socket) => {
     // Notify clients
     io.to(room).emit('newGameStarted');
     startRound(room);
+  });
+
+  // Voice chat handlers
+  socket.on('startVoiceChat', () => {
+    const room = getRoom(socket);
+    socket.to(room).emit('voiceChatStarted');
+  });
+
+  socket.on('voiceSignal', ({ signal, targetId, room }) => {
+    if (targetId) {
+      // Send to specific target
+      io.to(targetId).emit('voiceSignal', { signal, senderId: socket.id });
+    } else {
+      // Broadcast to room
+      socket.to(room).emit('voiceSignal', { signal, senderId: socket.id });
+    }
+  });
+
+  socket.on('leaveVoiceChat', () => {
+    const room = getRoom(socket);
+    socket.to(room).emit('playerLeftVoiceChat', socket.id);
+  });
+
+  socket.on('disconnect', () => {
+    const room = getRoom(socket);
+    if (room) {
+      socket.to(room).emit('playerLeftVoiceChat', socket.id);
+    }
   });
 
   function tallyVotes(game, room) {
@@ -165,7 +192,7 @@ io.on('connection', (socket) => {
     if (isFinalRound) {
       game.players.forEach(p => {
         if (game.scores[p.id] > winner.score) {
-          winner = { name: p.name, score: game.scores[p.id] };
+          winner = { name: p.name, score: game.scores[p.id], id: p.id };
         }
       });
     }
@@ -240,7 +267,7 @@ function startRound(room) {
               startRound(room);
             } else {
               // Handle final round with no votes
-              const winner = { name: 'No one', score: 0 };
+              const winner = { name: 'No one', score: 0, id: null };
               io.to(room).emit('showScores', {
                 scores: game.players.map(p => ({
                   name: p.name,
