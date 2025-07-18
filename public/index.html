@@ -359,6 +359,110 @@
       font-size: 1.3rem;
     }
     
+    /* Voice Chat Styles */
+    #voice-chat-overlay {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: var(--border-radius);
+      padding: 15px;
+      box-shadow: var(--box-shadow);
+      width: 300px;
+    }
+  
+    .voice-chat-container {
+      display: flex;
+      flex-direction: column;
+    }
+  
+    .voice-chat-controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+  
+    .voice-btn {
+      flex: 1;
+      padding: 8px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      background: var(--light-gray);
+    }
+  
+    .voice-btn:hover {
+      background: var(--primary);
+      color: white;
+    }
+  
+    .voice-btn.danger {
+      background: var(--light-gray);
+      color: var(--danger);
+    }
+  
+    .voice-btn.danger:hover {
+      background: var(--danger);
+      color: white;
+    }
+  
+    #voice-participants {
+      margin-top: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+  
+    .participant {
+      display: flex;
+      align-items: center;
+      padding: 8px;
+      border-radius: 8px;
+      background: var(--light-gray);
+      margin-bottom: 5px;
+    }
+  
+    .participant-you {
+      background: rgba(67, 97, 238, 0.1);
+      border-left: 3px solid var(--primary);
+    }
+  
+    .participant-muted {
+      opacity: 0.7;
+    }
+  
+    .participant-speaking {
+      animation: pulse 1.5s infinite;
+      background: rgba(76, 201, 240, 0.2);
+    }
+  
+    @keyframes pulse {
+      0% { background: rgba(76, 201, 240, 0.2); }
+      50% { background: rgba(76, 201, 240, 0.4); }
+      100% { background: rgba(76, 201, 240, 0.2); }
+    }
+  
+    /* Sound control button */
+    #sound-control {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      z-index: 1000;
+    }
+    
     @media (max-width: 900px) {
       .top-section {
         flex-direction: column;
@@ -384,7 +488,32 @@
         width: 100%;
         margin: 8px 0;
       }
-
+      
+      #voteOptions {
+        grid-template-columns: 1fr 1fr;
+      }
+      
+      #voice-chat-overlay {
+        width: 250px;
+        right: 10px;
+        bottom: 10px;
+      }
+    }
+    
+    @media (max-width: 600px) {
+      #voteOptions {
+        grid-template-columns: 1fr;
+      }
+      
+      .game-layout {
+        height: auto;
+      }
+      
+      #voice-chat-overlay {
+        width: calc(100% - 20px);
+        right: 10px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -420,32 +549,29 @@
       <div id="timer">Time left: <span id="timeLeft">0</span>s</div>
       
       <div class="game-layout">
-        <!-- Top 40% section -->
-        <div class="top-section screen-section">
-          <h4>Question:</h4>
-          <p id="displayQuestion"></p>
-          
-          <div id="answer-box">
-            <input type="text" id="answerInput" placeholder="Type your answer..." />
-            <div class="btn-group">
-              <button id="submitAnswer">Submit Answer</button>
+        <div class="top-section">
+          <div class="question-phase screen-section">
+            <h4>Question:</h4>
+            <p id="displayQuestion"></p>
+            
+            <div id="answer-box">
+              <input type="text" id="answerInput" placeholder="Type your answer..." />
+              <div class="btn-group">
+                <button id="submitAnswer">Submit Answer</button>
+              </div>
+            </div>
+            
+            <div id="answers-table" class="hidden">
+              <h4>Answers:</h4>
+              <table>
+                <thead>
+                  <tr><th>Player</th><th>Answer</th></tr>
+                </thead>
+                <tbody id="answersBody"></tbody>
+              </table>
             </div>
           </div>
           
-          <div id="answers-table" class="hidden">
-            <h4>Answers:</h4>
-            <table>
-              <thead>
-                <tr><th>Player</th><th>Answer</th></tr>
-              </thead>
-              <tbody id="answersBody"></tbody>
-            </table>
-          </div>
-        </div>
-        
-        <!-- Bottom 60% section -->
-        <div class="bottom-section">
-          <!-- Left 20% - Scoreboard -->
           <div class="scoreboard-container screen-section">
             <h4>Scoreboard</h4>
             <table>
@@ -455,24 +581,23 @@
               <tbody id="scoreboardBody"></tbody>
             </table>
           </div>
-          
-          <!-- Right 80% - Discussion/Voting -->
-          <div class="main-phase screen-section">
-            <div id="discussion-box">
-              <h4>Discussion:</h4>
-              <div id="discussionMessages"></div>
-              <input type="text" id="discussionInput" placeholder="Type your message..." />
-              <div class="btn-group">
-                <button id="submitDiscussion">Send</button>
-              </div>
+        </div>
+        
+        <div class="main-phase screen-section">
+          <div id="discussion-box">
+            <h4>Discussion:</h4>
+            <div id="discussionMessages"></div>
+            <input type="text" id="discussionInput" placeholder="Type your message..." />
+            <div class="btn-group">
+              <button id="submitDiscussion">Send</button>
             </div>
-            
-            <div id="vote-box" class="hidden">
-              <h4>Vote: Who is the imposter?</h4>
-              <div id="voteOptions"></div>
-              <div class="btn-group">
-                <button id="submitVote">Submit Vote</button>
-              </div>
+          </div>
+          
+          <div id="vote-box" class="hidden">
+            <h4>Vote: Who is the imposter?</h4>
+            <div id="voteOptions"></div>
+            <div class="btn-group">
+              <button id="submitVote">Submit Vote</button>
             </div>
           </div>
         </div>
@@ -500,6 +625,36 @@
     </div>
   </div>
 
+  <!-- Audio elements for sound effects -->
+  <audio id="timerSound" src="https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3" preload="auto"></audio>
+  <audio id="correctSound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3" preload="auto"></audio>
+  <audio id="wrongSound" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3" preload="auto"></audio>
+  <audio id="startSound" src="https://assets.mixkit.co/sfx/preview/mixkit-game-show-suspense-waiting-668.mp3" preload="auto"></audio>
+  <audio id="voteSound" src="https://assets.mixkit.co/sfx/preview/mixkit-unlock-game-notification-253.mp3" preload="auto"></audio>
+
+  <!-- Voice chat UI -->
+  <div id="voice-chat-overlay" class="hidden">
+    <div class="voice-chat-container">
+      <h4>Voice Chat</h4>
+      <div id="voice-chat-status">Connecting...</div>
+      <div class="voice-chat-controls">
+        <button id="mute-mic-btn" class="voice-btn">
+          <i class="fas fa-microphone"></i> Mute
+        </button>
+        <button id="leave-voice-btn" class="voice-btn danger">
+          <i class="fas fa-phone-slash"></i> Leave
+        </button>
+      </div>
+      <div id="voice-participants"></div>
+    </div>
+  </div>
+
+  <!-- Add Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+  
+  <!-- Add SimplePeer for WebRTC -->
+  <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.0/simplepeer.min.js"></script>
+  
   <script src="/socket.io/socket.io.js"></script>
   <script src="/client.js"></script>
 </body>
