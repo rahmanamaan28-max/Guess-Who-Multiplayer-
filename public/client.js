@@ -7,7 +7,6 @@ let timerInterval;
 // Voice chat variables
 let voiceStream = null;
 let voiceConnections = {};
-let voicePeer = null;
 let isMuted = false;
 
 // Game event handlers
@@ -71,42 +70,18 @@ document.getElementById('restartGame').onclick = () => {
 async function startVoiceChat() {
   try {
     document.getElementById('voice-chat-overlay').classList.remove('hidden');
-    
-    // Initialize SimplePeer for WebRTC
-    voicePeer = new SimplePeer({ initiator: true, trickle: false });
+    document.getElementById('voice-chat-status').textContent = 'Connecting...';
     
     // Get user media
-    voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    
-    // Add our stream to peer connection
-    voicePeer.addStream(voiceStream);
-    
-    // Handle signal data
-    voicePeer.on('signal', data => {
-      socket.emit('voiceSignal', { signal: data, room: myRoom });
+    voiceStream = await navigator.mediaDevices.getUserMedia({ 
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true
+      }
     });
     
-    // When we receive a stream
-    voicePeer.on('stream', stream => {
-      // Create audio element for the remote stream
-      const audio = new Audio();
-      audio.srcObject = stream;
-      audio.play();
-      
-      // Add to voice connections
-      const id = stream.id;
-      voiceConnections[id] = { audio, stream };
-      updateVoiceParticipants();
-    });
-    
-    // Handle errors
-    voicePeer.on('error', err => {
-      console.error('Voice chat error:', err);
-      document.getElementById('voice-chat-status').textContent = 'Error: ' + err.message;
-    });
-    
-    document.getElementById('voice-chat-status').textContent = 'Connected';
-    updateVoiceParticipants();
+    // Request peers from server
+    socket.emit('getVoicePeers', myRoom);
     
   } catch (err) {
     console.error('Error starting voice chat:', err);
@@ -114,18 +89,56 @@ async function startVoiceChat() {
   }
 }
 
+function createPeerConnection(peerId, isInitiator) {
+  const peer = new SimplePeer({
+    initiator: isInitiator,
+    trickle: false,
+    stream: voiceStream
+  });
+
+  peer.on('signal', data => {
+    socket.emit('voiceSignal', { 
+      signal: data, 
+      targetId: peerId,
+      room: myRoom 
+    });
+  });
+
+  peer.on('stream', stream => {
+    if (!voiceConnections[peerId]) {
+      const audio = new Audio();
+      audio.srcObject = stream;
+      audio.play();
+      voiceConnections[peerId] = { audio, peer, stream };
+      updateVoiceParticipants();
+    }
+  });
+
+  peer.on('error', err => {
+    console.error('Peer error:', err);
+  });
+
+  peer.on('close', () => {
+    if (voiceConnections[peerId]) {
+      voiceConnections[peerId].audio.pause();
+      delete voiceConnections[peerId];
+      updateVoiceParticipants();
+    }
+  });
+
+  return peer;
+}
+
 function stopVoiceChat() {
+  // Stop local stream
   if (voiceStream) {
     voiceStream.getTracks().forEach(track => track.stop());
     voiceStream = null;
   }
-  
-  if (voicePeer) {
-    voicePeer.destroy();
-    voicePeer = null;
-  }
-  
+
+  // Close all peer connections
   Object.values(voiceConnections).forEach(conn => {
+    conn.peer.destroy();
     if (conn.audio) {
       conn.audio.pause();
       conn.audio.srcObject = null;
@@ -180,7 +193,7 @@ document.getElementById('mute-mic-btn').onclick = () => {
 
 document.getElementById('leave-voice-btn').onclick = () => {
   stopVoiceChat();
-  socket.emit('leaveVoiceChat');
+  socket.emit('leaveVoiceChat', myRoom);
 };
 
 // Socket event handlers
@@ -248,7 +261,7 @@ socket.on('revealAnswers', ({ question, answers }) => {
 socket.on('startDiscussion', ({ time }) => {
   // Start voice chat when discussion begins
   if (navigator.mediaDevices) {
-    socket.emit('startVoiceChat');
+    startVoiceChat();
   }
   document.getElementById('discussion-box').classList.remove('hidden');
   document.getElementById('vote-box').classList.add('hidden');
@@ -299,39 +312,43 @@ socket.on('showScores', ({ scores, isFinalRound, winner }) => {
   }
 });
 
-socket.on('voiceSignal', ({ signal, senderId }) => {
-  if (!voicePeer) return;
+socket.on('voicePeers', (peerIds) => {
+  document.getElementById('voice-chat-status').textContent = 'Connected';
   
-  // If we're the initiator, create a new peer for this connection
-  if (voicePeer.initiator) {
-    const newPeer = new SimplePeer({ initiator: false, trickle: false });
-    newPeer.addStream(voiceStream);
-    
-    newPeer.on('signal', data => {
-      socket.emit('voiceSignal', { signal: data, room: myRoom, targetId: senderId });
-    });
-    
-    newPeer.on('stream', stream => {
-      const audio = new Audio();
-      audio.srcObject = stream;
-      audio.play();
-      voiceConnections[senderId] = { audio, stream };
-      updateVoiceParticipants();
-    });
-    
-    newPeer.signal(signal);
-    voiceConnections[senderId] = { peer: newPeer };
-  } else {
-    voicePeer.signal(signal);
+  peerIds.forEach(peerId => {
+    if (!voiceConnections[peerId] && peerId !== socket.id) {
+      const isInitiator = socket.id < peerId; // Simple way to decide initiator
+      const peer = createPeerConnection(peerId, isInitiator);
+      voiceConnections[peerId] = { peer };
+    }
+  });
+});
+
+socket.on('voiceSignal', ({ signal, senderId }) => {
+  if (voiceConnections[senderId]) {
+    voiceConnections[senderId].peer.signal(signal);
+  } else if (senderId !== socket.id) {
+    const peer = createPeerConnection(senderId, false);
+    peer.signal(signal);
+    voiceConnections[senderId] = { peer };
   }
 });
 
 socket.on('voiceChatStarted', () => {
-  startVoiceChat();
+  // Not used in this implementation
+});
+
+socket.on('newVoicePeer', (peerId) => {
+  if (!voiceConnections[peerId] && peerId !== socket.id) {
+    const isInitiator = socket.id < peerId;
+    const peer = createPeerConnection(peerId, isInitiator);
+    voiceConnections[peerId] = { peer };
+  }
 });
 
 socket.on('playerLeftVoiceChat', playerId => {
   if (voiceConnections[playerId]) {
+    voiceConnections[playerId].peer.destroy();
     if (voiceConnections[playerId].audio) {
       voiceConnections[playerId].audio.pause();
       voiceConnections[playerId].audio.srcObject = null;
