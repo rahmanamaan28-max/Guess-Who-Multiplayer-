@@ -32,10 +32,6 @@
     "fake": "How many hours in 3 days?"
   },
   {
-    "real": "Your biggest pet peeve?",
-    "fake": "Name something people commonly dislike"
-  },
-  {
     "real": "How many unread emails in your inbox?",
     "fake": "How many sides on a cube?"
   },
@@ -73,7 +69,7 @@
   },
   {
     "real": "Your most-played song this month?",
-    "fake": "Name any Weeknd song"
+    "fake": "Name any Anupam song"
   },
   {
     "real": "How many unread texts?",
@@ -96,10 +92,6 @@
     "fake": "Pick a number between 5-20"
   },
   {
-    "real": "Your favorite streaming service?",
-    "fake": "Name any video platform"
-  },
-  {
     "real": "How long your shower took today?",
     "fake": "How many minutes in an hour?"
   },
@@ -117,23 +109,19 @@
   },
   {
     "real": "How many languages you speak?",
-    "fake": "How many official UN languages?"
+    "fake": "How many official Indian languages?"
   },
   {
     "real": "Your current screen time average?",
     "fake": "Pick a number between 3-10 hours"
   },
   {
-    "real": "Favorite gaming console?",
-    "fake": "Name any PlayStation model"
-  },
-  {
     "real": "How many browser tabs open?",
-    "fake": "How many primary colors?"
+    "fake": "Total number of fingers you guys have combined"
   },
   {
     "real": "Your best subject in school?",
-    "fake": "Name a STEM field"
+    "fake": "Name the course you are studying"
   },
   {
     "real": "How many concerts attended?",
@@ -153,10 +141,10 @@
   },
   {
     "real": "Your go-to fast food?",
-    "fake": "Name any burger chain"
+    "fake": "Name any pizza shop"
   },
   {
-    "real": "How many unplayed Steam games?",
+    "real": "How many players on a football team?",
     "fake": "How many dots on dice?"
   },
   {
@@ -172,8 +160,8 @@
     "fake": "Name any chocolate brand"
   },
   {
-    "real": "How many skipped songs today?",
-    "fake": "How many notes in major scale?"
+    "real": "How many played songs today?",
+    "fake": "How many semester in one year?"
   },
   {
     "real": "Your most expensive possession?",
@@ -192,8 +180,8 @@
     "fake": "How many planets in solar system?"
   },
   {
-    "real": "Your go-to coffee order?",
-    "fake": "Name any Starbucks size"
+    "real": "Your go-to drink order?",
+    "fake": "Name any colddrink company"
   },
   {
     "real": "Current age?",
@@ -204,19 +192,27 @@
     "fake": "Pick a number 7-13"
   },
   {
-    "real": "How many streaming subscriptions?",
-    "fake": "How many Avengers in Endgame?"
-  },
-  {
     "real": "Your favorite weather?",
-    "fake": "Name any precipitation type"
-  },
-  {
-    "real": "How many Discord servers?",
-    "fake": "How many Discord logo colors?"
+    "fake": "Name any climatic region"
   },
   {
     "real": "Your most-used word?",
     "fake": "Name any conjunction"
+  },
+  {
+    "real": "How many continents are there?",
+    "fake": "How many planets are in our solar system?"
+  },
+  {
+    "real": "What is the largest ocean on Earth?",
+    "fake": "What is the largest desert on Earth?"
+  },
+  {
+    "real": "Who painted the Mona Lisa?",
+    "fake": "Who Sung Alada Alada?"
+  },
+  {
+    "real": "What is the chemical symbol for gold?",
+    "fake": "What is the chemical symbol for silver?"
   }
 ]
