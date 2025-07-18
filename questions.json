@@ -1,5 +1,33 @@
 [
   {
+    "real": "What is the tallest mountain in the world?",
+    "fake": "What is the deepest point in the ocean?"
+  },
+  {
+    "real": "How many days are in a leap year?",
+    "fake": "How many hours are in a week?"
+  },
+  {
+    "real": "What is the largest mammal?",
+    "fake": "What is the fastest land animal?"
+  },
+  {
+    "real": "What is the currency of Japan?",
+    "fake": "What is the currency of India?"
+  },
+  {
+    "real": "Who wrote 'Romeo and Juliet'?",
+    "fake": "Who wrote 'Hamlet'?"
+  }
+  {
+    "real": "What's your favorite movie?",
+    "fake": "What's your least favorite food?"
+  },
+  {
+    "real": "Where would you like to travel?",
+    "fake": "What's your biggest fear?"
+  }
+  {
     "real": "What's your favorite fruit?",
     "fake": "What's your favorite vegetable?"
   },
