@@ -10,8 +10,6 @@ const io = new Server(server);
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
-// Serve sound files from sounds directory
-app.use('/sounds', express.static(path.join(__dirname, 'sounds')));
 
 const questions = JSON.parse(fs.readFileSync('questions.json', 'utf-8'));
 const rooms = {};
