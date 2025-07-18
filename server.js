@@ -2,12 +2,16 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.static('public'));
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
+// Serve sound files from sounds directory
+app.use('/sounds', express.static(path.join(__dirname, 'sounds')));
 
 const questions = JSON.parse(fs.readFileSync('questions.json', 'utf-8'));
 const rooms = {};
@@ -188,7 +192,7 @@ io.on('connection', (socket) => {
     const isFinalRound = game.round >= game.settings.rounds;
     
     // Find winner for final round
-    let winner = { name: '', score: -1 };
+    let winner = { name: '', score: -1, id: '' };
     if (isFinalRound) {
       game.players.forEach(p => {
         if (game.scores[p.id] > winner.score) {
