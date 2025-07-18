@@ -4,11 +4,6 @@ let myRoom = '';
 let isHost = false;
 let timerInterval;
 
-// Voice chat variables
-let voiceStream = null;
-let voiceConnections = {};
-let isMuted = false;
-
 // Game event handlers
 document.getElementById('joinBtn').onclick = () => {
   myName = document.getElementById('playerName').value.trim();
@@ -81,153 +76,6 @@ document.getElementById('toggle-scoreboard').addEventListener('click', () => {
   scoreboard.style.display = scoreboard.style.display === 'none' ? 'block' : 'none';
 });
 
-// Voice chat functions
-async function startVoiceChat() {
-  try {
-    document.getElementById('voice-chat-overlay').classList.remove('hidden');
-    document.getElementById('voice-chat-status').textContent = 'Connecting...';
-    
-    // Get user media
-    voiceStream = await navigator.mediaDevices.getUserMedia({ 
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      }
-    });
-    
-    // Request peers from server
-    socket.emit('getVoicePeers', myRoom);
-    
-    document.getElementById('voice-chat-status').textContent = 'Connected';
-  } catch (err) {
-    console.error('Error starting voice chat:', err);
-    document.getElementById('voice-chat-status').textContent = 'Error: ' + err.message;
-  }
-}
-
-function createPeerConnection(peerId, isInitiator) {
-  const peer = new SimplePeer({
-    initiator: isInitiator,
-    trickle: true,
-    stream: voiceStream,
-    config: {
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' }
-      ]
-    }
-  });
-
-  peer.on('signal', data => {
-    // Only send offer/answer, not ICE candidates
-    if (data.type === 'offer' || data.type === 'answer') {
-      socket.emit('voiceSignal', { 
-        signal: data, 
-        targetId: peerId,
-        room: myRoom 
-      });
-    }
-  });
-
-  peer.on('stream', stream => {
-    if (!voiceConnections[peerId]) {
-      const audio = new Audio();
-      audio.srcObject = stream;
-      audio.volume = 0.8; // Prevent loud volumes
-      audio.play()
-        .catch(e => console.log("Audio play failed:", e));
-      voiceConnections[peerId] = { audio, peer, stream };
-      updateVoiceParticipants();
-    }
-  });
-
-  peer.on('error', err => {
-    console.error('Peer error:', err);
-  });
-
-  peer.on('close', () => {
-    if (voiceConnections[peerId]) {
-      voiceConnections[peerId].audio.pause();
-      delete voiceConnections[peerId];
-      updateVoiceParticipants();
-    }
-  });
-
-  return peer;
-}
-
-function stopVoiceChat() {
-  // Stop local stream
-  if (voiceStream) {
-    voiceStream.getTracks().forEach(track => track.stop());
-    voiceStream = null;
-  }
-
-  // Close all peer connections
-  Object.values(voiceConnections).forEach(conn => {
-    conn.peer.destroy();
-    if (conn.audio) {
-      conn.audio.pause();
-      conn.audio.srcObject = null;
-    }
-  });
-  
-  voiceConnections = {};
-  document.getElementById('voice-chat-overlay').classList.add('hidden');
-}
-
-function updateVoiceParticipants() {
-  const container = document.getElementById('voice-participants');
-  container.innerHTML = '';
-  
-  // Add yourself
-  const you = document.createElement('div');
-  you.className = `participant participant-you ${isMuted ? 'participant-muted' : ''}`;
-  you.innerHTML = `<i class="fas fa-user"></i> ${myName} (You) ${isMuted ? '<i class="fas fa-microphone-slash"></i>' : ''}`;
-  container.appendChild(you);
-  
-  // Add other participants
-  Object.entries(voiceConnections).forEach(([id, conn]) => {
-    const participant = document.createElement('div');
-    participant.className = `participant ${conn.isMuted ? 'participant-muted' : ''}`;
-    participant.innerHTML = `<i class="fas fa-user"></i> ${id} ${conn.isMuted ? '<i class="fas fa-microphone-slash"></i>' : ''}`;
-    container.appendChild(participant);
-  });
-}
-
-// Voice chat controls
-document.getElementById('mute-mic-btn').onclick = () => {
-  isMuted = !isMuted;
-  
-  if (voiceStream) {
-    voiceStream.getAudioTracks().forEach(track => {
-      track.enabled = !isMuted;
-    });
-  }
-  
-  // Broadcast mute state to others
-  socket.emit('muteState', { isMuted, room: myRoom });
-  
-  // Update button text and icon
-  const micBtn = document.getElementById('mute-mic-btn');
-  if (isMuted) {
-    micBtn.innerHTML = '<i class="fas fa-microphone-slash"></i> Unmute';
-    micBtn.classList.add('danger');
-  } else {
-    micBtn.innerHTML = '<i class="fas fa-microphone"></i> Mute';
-    micBtn.classList.remove('danger');
-  }
-  
-  updateVoiceParticipants();
-};
-
-document.getElementById('leave-voice-btn').onclick = () => {
-  stopVoiceChat();
-  socket.emit('leaveVoiceChat', myRoom);
-};
-
 // Socket event handlers
 socket.on('roomJoined', ({ room, players, host }) => {
   document.getElementById('join-screen').classList.add('hidden');
@@ -292,10 +140,6 @@ socket.on('revealAnswers', ({ question, answers }) => {
 });
 
 socket.on('startDiscussion', ({ time }) => {
-  // Start voice chat when discussion begins
-  if (navigator.mediaDevices) {
-    startVoiceChat();
-  }
   document.getElementById('discussion-box').classList.remove('hidden');
   document.getElementById('vote-box').classList.add('hidden');
   startTimer(time);
@@ -312,8 +156,6 @@ socket.on('newDiscussionMessage', ({ name, message }) => {
 });
 
 socket.on('startVote', ({ players, time }) => {
-  // Stop voice chat when voting begins
-  stopVoiceChat();
   document.getElementById('discussion-box').classList.add('hidden');
   document.getElementById('vote-box').classList.remove('hidden');
   
@@ -342,55 +184,6 @@ socket.on('showScores', ({ scores, isFinalRound, winner }) => {
     setTimeout(() => {
       showGameOverScreen(scores, winner);
     }, 5000);
-  }
-});
-
-socket.on('voicePeers', (peerIds) => {
-  document.getElementById('voice-chat-status').textContent = 'Connected';
-  
-  peerIds.forEach(peerId => {
-    if (!voiceConnections[peerId] && peerId !== socket.id) {
-      const isInitiator = socket.id < peerId; // Simple way to decide initiator
-      const peer = createPeerConnection(peerId, isInitiator);
-      voiceConnections[peerId] = { peer };
-    }
-  });
-});
-
-socket.on('voiceSignal', ({ signal, senderId }) => {
-  if (voiceConnections[senderId]) {
-    voiceConnections[senderId].peer.signal(signal);
-  } else if (senderId !== socket.id) {
-    const peer = createPeerConnection(senderId, false);
-    peer.signal(signal);
-    voiceConnections[senderId] = { peer };
-  }
-});
-
-socket.on('newVoicePeer', (peerId) => {
-  if (!voiceConnections[peerId] && peerId !== socket.id) {
-    const isInitiator = socket.id < peerId;
-    const peer = createPeerConnection(peerId, isInitiator);
-    voiceConnections[peerId] = { peer };
-  }
-});
-
-socket.on('playerLeftVoiceChat', playerId => {
-  if (voiceConnections[playerId]) {
-    voiceConnections[playerId].peer.destroy();
-    if (voiceConnections[playerId].audio) {
-      voiceConnections[playerId].audio.pause();
-      voiceConnections[playerId].audio.srcObject = null;
-    }
-    delete voiceConnections[playerId];
-    updateVoiceParticipants();
-  }
-});
-
-socket.on('remoteMuteState', ({ playerId, isMuted }) => {
-  if (voiceConnections[playerId]) {
-    voiceConnections[playerId].isMuted = isMuted;
-    updateVoiceParticipants();
   }
 });
 
