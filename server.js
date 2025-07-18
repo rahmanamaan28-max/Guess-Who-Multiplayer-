@@ -123,6 +123,12 @@ io.on('connection', (socket) => {
   });
 
   function tallyVotes(game, room) {
+    // Clear any existing vote timeout
+    if (game.voteTimeout) {
+      clearTimeout(game.voteTimeout);
+      game.voteTimeout = null;
+    }
+    
     const counts = {};
     Object.values(game.votes).forEach(id => {
       counts[id] = (counts[id] || 0) + 1;
@@ -188,6 +194,7 @@ function startRound(room) {
   game.currentQuestion = question;
   game.answers = [];
   game.votes = {};
+  game.voteTimeout = null; // Reset vote timeout
 
   const imposterIndex = Math.floor(Math.random() * game.players.length);
   game.imposter = game.players[imposterIndex].id;
@@ -201,22 +208,51 @@ function startRound(room) {
     });
   });
 
+  // Answer phase timeout
   setTimeout(() => {
     io.to(room).emit('revealAnswers', {
       question: question.real,
       answers: game.answers
     });
 
+    // After 3 sec → discussion
     setTimeout(() => {
       io.to(room).emit('startDiscussion', {
         time: game.settings.discussionTime
       });
 
+      // Discussion phase timeout
       setTimeout(() => {
         io.to(room).emit('startVote', {
           players: game.players,
           time: game.settings.voteTime
         });
+
+        // Set timeout to automatically tally votes
+        game.voteTimeout = setTimeout(() => {
+          if (Object.keys(game.votes || {}).length > 0) {
+            // Only tally if at least one vote was submitted
+            tallyVotes(game, room);
+          } else {
+            // Skip to next round if no votes
+            game.round++;
+            if (game.round <= game.settings.rounds) {
+              startRound(room);
+            } else {
+              // Handle final round with no votes
+              const winner = { name: 'No one', score: 0 };
+              io.to(room).emit('showScores', {
+                scores: game.players.map(p => ({
+                  name: p.name,
+                  score: game.scores[p.id] || 0
+                })),
+                isFinalRound: true,
+                winner
+              });
+            }
+          }
+        }, game.settings.voteTime * 1000);
+
       }, game.settings.discussionTime * 1000);
 
     }, 3000);
