@@ -354,103 +354,6 @@
       font-size: 1.3rem;
     }
     
-    /* Compact Voice Chat Styles */
-    #voice-chat-overlay {
-      position: fixed;
-      bottom: 15px;
-      right: 15px;
-      z-index: 1000;
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 12px;
-      padding: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-      width: 240px;
-      font-size: 0.9rem;
-    }
-  
-    .voice-chat-container {
-      display: flex;
-      flex-direction: column;
-    }
-  
-    .voice-chat-container h4 {
-      font-size: 1rem;
-      margin-bottom: 8px;
-      text-align: center;
-    }
-  
-    .voice-chat-controls {
-      display: flex;
-      gap: 8px;
-      margin-top: 8px;
-    }
-  
-    .voice-btn {
-      flex: 1;
-      padding: 6px;
-      border-radius: 6px;
-      border: none;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      background: var(--light-gray);
-      font-size: 0.85rem;
-    }
-  
-    .voice-btn:hover {
-      background: var(--primary);
-      color: white;
-    }
-  
-    .voice-btn.danger {
-      background: var(--light-gray);
-      color: var(--danger);
-    }
-  
-    .voice-btn.danger:hover {
-      background: var(--danger);
-      color: white;
-    }
-  
-    #voice-participants {
-      margin-top: 8px;
-      max-height: 150px;
-      overflow-y: auto;
-      font-size: 0.85rem;
-    }
-  
-    .participant {
-      display: flex;
-      align-items: center;
-      padding: 6px;
-      border-radius: 6px;
-      background: var(--light-gray);
-      margin-bottom: 4px;
-      font-size: 0.85rem;
-    }
-  
-    .participant-you {
-      background: rgba(67, 97, 238, 0.1);
-      border-left: 3px solid var(--primary);
-    }
-  
-    .participant-muted {
-      opacity: 0.7;
-    }
-  
-    .participant-speaking {
-      animation: pulse 1.5s infinite;
-      background: rgba(76, 201, 240, 0.2);
-    }
-  
-    @keyframes pulse {
-      0% { background: rgba(76, 201, 240, 0.2); }
-      50% { background: rgba(76, 201, 240, 0.4); }
-      100% { background: rgba(76, 201, 240, 0.2); }
-    }
-    
     /* Floating Scoreboard */
     #floating-scoreboard {
       position: fixed;
@@ -523,12 +426,6 @@
         grid-template-columns: 1fr 1fr;
       }
       
-      #voice-chat-overlay {
-        width: 220px;
-        right: 10px;
-        bottom: 10px;
-      }
-      
       #floating-scoreboard {
         max-width: 200px;
         padding: 8px;
@@ -542,11 +439,6 @@
       
       .game-layout {
         height: auto;
-      }
-      
-      #voice-chat-overlay {
-        width: calc(100% - 20px);
-        right: 10px;
       }
       
       #floating-scoreboard {
@@ -667,28 +559,8 @@
     </table>
   </div>
 
-  <!-- Compact Voice chat UI -->
-  <div id="voice-chat-overlay" class="hidden">
-    <div class="voice-chat-container">
-      <h4>Voice Chat</h4>
-      <div id="voice-chat-status">Connecting...</div>
-      <div class="voice-chat-controls">
-        <button id="mute-mic-btn" class="voice-btn">
-          <i class="fas fa-microphone"></i> Mute
-        </button>
-        <button id="leave-voice-btn" class="voice-btn danger">
-          <i class="fas fa-phone-slash"></i> Leave
-        </button>
-      </div>
-      <div id="voice-participants"></div>
-    </div>
-  </div>
-
   <!-- Add Font Awesome for icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-  
-  <!-- Add SimplePeer for WebRTC -->
-  <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.0/simplepeer.min.js"></script>
   
   <script src="/socket.io/socket.io.js"></script>
   <script src="/client.js"></script>
