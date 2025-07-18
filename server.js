@@ -158,6 +158,14 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Add new mute state handler
+socket.on('muteState', ({ isMuted, room }) => {
+  socket.to(room).emit('remoteMuteState', { 
+    playerId: socket.id, 
+    isMuted 
+  });
+});
+
   function tallyVotes(game, room) {
     // Clear any existing vote timeout
     if (game.voteTimeout) {
