@@ -360,6 +360,6 @@ function startRound(room) {
 }
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+server.listen(3001, () => { // Change 3000 to 3001
+  console.log(`🚀 Server running at http://localhost:3001`);
 });
