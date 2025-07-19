@@ -13,8 +13,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const questions = JSON.parse(fs.readFileSync('questions.json', 'utf-8'));
 const rooms = {};
+let customQuestions = [];
 
-function getRandomQuestion() {
+function getRandomQuestion(room) {
+  if (customQuestions.length > 0) {
+    return customQuestions[Math.floor(Math.random() * customQuestions.length)];
+  }
   return questions[Math.floor(Math.random() * questions.length)];
 }
 
@@ -25,17 +29,23 @@ function getRoom(socket) {
 io.on('connection', (socket) => {
   console.log('✅ User connected:', socket.id);
 
-  socket.on('createRoom', ({ name }) => {
+  socket.on('createRoom', ({ name, avatarColor, avatarInitials }) => {
     const room = Math.random().toString(36).substring(2, 6).toUpperCase();
     rooms[room] = {
       host: socket.id,
       players: [],
       scores: {},
       settings: {},
-      round: 1
+      round: 1,
+      customQuestions: []
     };
     socket.join(room);
-    rooms[room].players.push({ id: socket.id, name });
+    rooms[room].players.push({ 
+      id: socket.id, 
+      name,
+      avatarColor,
+      avatarInitials
+    });
     rooms[room].scores[socket.id] = 0;
 
     socket.emit('roomJoined', {
@@ -45,11 +55,16 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('joinRoom', ({ name, room }) => {
+  socket.on('joinRoom', ({ name, room, avatarColor, avatarInitials }) => {
     const game = rooms[room];
     if (game) {
       socket.join(room);
-      game.players.push({ id: socket.id, name });
+      game.players.push({ 
+        id: socket.id, 
+        name,
+        avatarColor,
+        avatarInitials
+      });
       game.scores[socket.id] = 0;
       socket.emit('roomJoined', {
         room,
@@ -83,14 +98,37 @@ io.on('connection', (socket) => {
     const game = rooms[room];
     const player = game.players.find(p => p.id === socket.id);
     if (!game.answers) game.answers = [];
-    game.answers.push({ id: socket.id, name: player.name, answer });
+    game.answers.push({ 
+      id: socket.id, 
+      name: player.name, 
+      answer,
+      avatarColor: player.avatarColor,
+      avatarInitials: player.avatarInitials
+    });
   });
 
   socket.on('discussionMessage', (msg) => {
     const room = getRoom(socket);
     const game = rooms[room];
     const player = game.players.find(p => p.id === socket.id);
-    io.to(room).emit('newDiscussionMessage', { name: player.name, message: msg });
+    io.to(room).emit('newDiscussionMessage', { 
+      name: player.name, 
+      message: msg,
+      avatarColor: player.avatarColor,
+      avatarInitials: player.avatarInitials
+    });
+  });
+
+  socket.on('emojiReaction', (emoji) => {
+    const room = getRoom(socket);
+    const game = rooms[room];
+    const player = game.players.find(p => p.id === socket.id);
+    io.to(room).emit('newEmojiReaction', { 
+      name: player.name, 
+      emoji,
+      avatarColor: player.avatarColor,
+      avatarInitials: player.avatarInitials
+    });
   });
 
   socket.on('submitVote', (votedId) => {
@@ -124,6 +162,37 @@ io.on('connection', (socket) => {
     startRound(room);
   });
 
+  socket.on('submitCustomQuestion', ({ real, fake }) => {
+    const room = getRoom(socket);
+    const game = rooms[room];
+    
+    if (game && game.host === socket.id) {
+      game.customQuestions.push({ real, fake });
+      io.to(room).emit('customQuestionAdded', { real, fake });
+    }
+  });
+
+  socket.on('disconnect', () => {
+    const room = getRoom(socket);
+    if (room && rooms[room]) {
+      // Remove player from room
+      rooms[room].players = rooms[room].players.filter(p => p.id !== socket.id);
+      
+      // If host left, assign new host
+      if (rooms[room].host === socket.id && rooms[room].players.length > 0) {
+        rooms[room].host = rooms[room].players[0].id;
+      }
+      
+      // Update players
+      io.to(room).emit('updatePlayers', rooms[room].players);
+      
+      // Remove room if empty
+      if (rooms[room].players.length === 0) {
+        delete rooms[room];
+      }
+    }
+  });
+
   function tallyVotes(game, room) {
     // Clear any existing vote timeout
     if (game.voteTimeout) {
@@ -147,6 +216,7 @@ io.on('connection', (socket) => {
 
     const imposterId = game.imposter;
     const imposterCaught = mostVotedId === imposterId;
+    const wasImposter = imposterId;
     
     // Award points
     game.players.forEach(p => {
@@ -175,10 +245,13 @@ io.on('connection', (socket) => {
     io.to(room).emit('showScores', {
       scores: game.players.map(p => ({ 
         name: p.name, 
-        score: game.scores[p.id] || 0 
+        score: game.scores[p.id] || 0,
+        avatarColor: p.avatarColor,
+        avatarInitials: p.avatarInitials
       })),
       isFinalRound,
-      winner
+      winner,
+      wasImposter
     });
     
     game.round++;
@@ -192,7 +265,7 @@ io.on('connection', (socket) => {
 
 function startRound(room) {
   const game = rooms[room];
-  const question = getRandomQuestion();
+  const question = getRandomQuestion(room);
   game.currentQuestion = question;
   game.answers = [];
   game.votes = {};
@@ -206,7 +279,8 @@ function startRound(room) {
     io.to(p.id).emit('roundStart', {
       round: game.round,
       question: q,
-      time: game.settings.answerTime
+      time: game.settings.answerTime,
+      isImposter: p.id === game.imposter
     });
   });
 
@@ -246,7 +320,9 @@ function startRound(room) {
               io.to(room).emit('showScores', {
                 scores: game.players.map(p => ({
                   name: p.name,
-                  score: game.scores[p.id] || 0
+                  score: game.scores[p.id] || 0,
+                  avatarColor: p.avatarColor,
+                  avatarInitials: p.avatarInitials
                 })),
                 isFinalRound: true,
                 winner
