@@ -13,11 +13,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const questions = JSON.parse(fs.readFileSync('questions.json', 'utf-8'));
 const rooms = {};
-let customQuestions = [];
 
 function getRandomQuestion(room) {
-  if (customQuestions.length > 0) {
-    return customQuestions[Math.floor(Math.random() * customQuestions.length)];
+  // Prioritize custom questions if available
+  if (rooms[room]?.customQuestions?.length > 0) {
+    const custom = rooms[room].customQuestions;
+    return custom[Math.floor(Math.random() * custom.length)];
   }
   return questions[Math.floor(Math.random() * questions.length)];
 }
@@ -30,7 +31,12 @@ io.on('connection', (socket) => {
   console.log('✅ User connected:', socket.id);
 
   socket.on('createRoom', ({ name, avatarColor, avatarInitials }) => {
-    const room = Math.random().toString(36).substring(2, 6).toUpperCase();
+    let room;
+    // Ensure unique room code
+    do {
+      room = Math.random().toString(36).substring(2, 6).toUpperCase();
+    } while (rooms[room]); // Prevent duplicates
+    
     rooms[room] = {
       host: socket.id,
       players: [],
@@ -39,15 +45,19 @@ io.on('connection', (socket) => {
       round: 1,
       customQuestions: []
     };
+    
     socket.join(room);
+    
     rooms[room].players.push({ 
       id: socket.id, 
       name,
       avatarColor,
       avatarInitials
     });
+    
     rooms[room].scores[socket.id] = 0;
 
+    console.log(`Room created: ${room} by ${name}`);
     socket.emit('roomJoined', {
       room,
       players: rooms[room].players,
@@ -56,7 +66,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('joinRoom', ({ name, room, avatarColor, avatarInitials }) => {
+    room = room.toUpperCase();
     const game = rooms[room];
+    
     if (game) {
       socket.join(room);
       game.players.push({ 
@@ -66,12 +78,17 @@ io.on('connection', (socket) => {
         avatarInitials
       });
       game.scores[socket.id] = 0;
+      
+      console.log(`${name} joined room ${room}`);
       socket.emit('roomJoined', {
         room,
         players: game.players,
         host: game.host
       });
       io.to(room).emit('updatePlayers', game.players);
+    } else {
+      console.log(`Room not found: ${room}`);
+      socket.emit('roomNotFound', room);
     }
   });
 
@@ -89,6 +106,7 @@ io.on('connection', (socket) => {
     });
     game.isFinalRound = false;
 
+    console.log(`Game started in room ${room}`);
     io.to(room).emit('gameStarted');
     startRound(room);
   });
@@ -158,6 +176,7 @@ io.on('connection', (socket) => {
     game.isFinalRound = false;
     
     // Notify clients
+    console.log(`Restarting game in room ${room}`);
     io.to(room).emit('newGameStarted');
     startRound(room);
   });
@@ -169,10 +188,12 @@ io.on('connection', (socket) => {
     if (game && game.host === socket.id) {
       game.customQuestions.push({ real, fake });
       io.to(room).emit('customQuestionAdded', { real, fake });
+      console.log(`Custom question added to room ${room}`);
     }
   });
 
   socket.on('disconnect', () => {
+    console.log('❌ User disconnected:', socket.id);
     const room = getRoom(socket);
     if (room && rooms[room]) {
       // Remove player from room
@@ -181,14 +202,14 @@ io.on('connection', (socket) => {
       // If host left, assign new host
       if (rooms[room].host === socket.id && rooms[room].players.length > 0) {
         rooms[room].host = rooms[room].players[0].id;
+        io.to(room).emit('updatePlayers', rooms[room].players);
+        console.log(`New host assigned in room ${room}: ${rooms[room].host}`);
       }
-      
-      // Update players
-      io.to(room).emit('updatePlayers', rooms[room].players);
       
       // Remove room if empty
       if (rooms[room].players.length === 0) {
         delete rooms[room];
+        console.log(`Room deleted: ${room}`);
       }
     }
   });
