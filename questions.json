@@ -242,5 +242,37 @@
   {
     "real": "What is the chemical symbol for gold?",
     "fake": "What is the chemical symbol for silver?"
+  },
+  {
+    "real": "What is the capital of West Bengal?",
+    "fake": "What is the old name of Kolkata?"
+  },
+  {
+    "real": "How many fingers do you have?",
+    "fake": "How many sides does a pentagon have?"
+  },
+  {
+    "real": "What is the largest planet in our solar system?",
+    "fake": "What is the smallest planet in our solar system?"
+  },
+  {
+    "real": "What is the chemical symbol for water?",
+    "fake": "What is the chemical symbol for heavy water?"
+  },
+  {
+    "real": "What is the main ingredient in biriyani?",
+    "fake": "What is the main ingredient in chicken 65?"
+  },
+  {
+    "real": "How many continents are there?",
+    "fake": "How many oceans are there?"
+  },
+  {
+    "real": "What is the largest mammal?",
+    "fake": "What is the fastest mammal?"
+  },
+  {
+    "real": "What is the currency of Japan?",
+    "fake": "What is the currency of India?"
   }
 ]
